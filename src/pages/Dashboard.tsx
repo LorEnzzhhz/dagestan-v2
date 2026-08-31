@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { getApiKeys } from "@/lib/store";
 import { useLiveModelPool } from "@/hooks/use-live-model-pool";
 import { getPoolStatus } from "@/lib/api-key-pool";
-import { getSmartModels, PROVIDER_INFO } from "@/lib/smart-models";
+// (getSmartModels/PROVIDER_INFO previously imported but not used in this view)
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,9 +95,13 @@ function useServicesStatus(): ServiceInfo[] {
     setServices(next);
   }, []);
   useEffect(() => {
-    void probe();
+    // Defer the initial probe to avoid a cascading render inside the effect body.
+    const initial = window.setTimeout(() => { void probe(); }, 0);
     const id = setInterval(probe, 5000);
-    return () => clearInterval(id);
+    return () => {
+      window.clearTimeout(initial);
+      clearInterval(id);
+    };
   }, [probe]);
   return services;
 }
@@ -300,9 +304,13 @@ function WorkspacePanel() {
   }, [previewUrl]);
 
   useEffect(() => {
-    probe();
+    // Defer the initial probe to avoid a cascading render inside the effect.
+    const initial = window.setTimeout(() => { void probe(); }, 0);
     const id = window.setInterval(probe, 8000);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(id);
+    };
   }, [probe]);
 
   return (
@@ -510,8 +518,8 @@ function ProvidersPanel() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {providers.map((p) => {
           const Icon = p.icon;
-          const configured = !!(keys as any)[p.id];
-          const poolCount = (pool as any)?.[p.id]?.totalKeys ?? null;
+          const configured = !!(keys as Record<string, unknown>)[p.id];
+          const poolCount = (pool as Record<string, { totalKeys?: number }> | null)?.[p.id]?.totalKeys ?? null;
           const freeCount = countByProvider.get(p.id) ?? 0;
           return (
             <Card key={p.id} className="border-border/70">

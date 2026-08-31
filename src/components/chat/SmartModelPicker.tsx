@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getSmartModels, recommendModel, PROVIDER_INFO, CATEGORY_INFO, type SmartModel, type ModelCategory, type ProviderId } from "@/lib/smart-models"
-import { useLiveModelPool, type PoolModel } from "@/hooks/use-live-model-pool"
+import { useLiveModelPool } from "@/hooks/use-live-model-pool"
 import { useLocalModels, fmtBytes, type LocalModel } from "@/hooks/use-local-models"
 
 const CATEGORY_ICONS: Record<ModelCategory, React.ElementType> = {

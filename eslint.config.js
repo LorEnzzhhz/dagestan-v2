@@ -6,7 +6,19 @@ import tseslint from "typescript-eslint";
 import eslintConfigPrettier from "eslint-config-prettier/flat";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "dist",
+      "node_modules",
+      "openclaw-real",
+      "opencodex",
+      "dagestan-android",
+      "scripts/vendor",
+      "**/*.cjs.src",
+      "coverage",
+      "release",
+    ],
+  },
   {
     extends: [
       js.configs.recommended,

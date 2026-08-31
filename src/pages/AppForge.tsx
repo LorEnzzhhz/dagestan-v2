@@ -437,7 +437,7 @@ function todoAppHTML(prompt: string): string {
 const f=document.getElementById('f'),t=document.getElementById('t'),list=document.getElementById('list'),empty=document.getElementById('empty');
 let todos=[];f.onsubmit=e=>{e.preventDefault();if(!t.value.trim())return;todos.push({text:t.value,done:false});t.value='';render()};
 function render(){list.innerHTML='';empty.style.display=todos.length?'none':'block';todos.forEach((todo,i)=>{const li=document.createElement('li');li.style.cssText='display:flex;align-items:center;gap:.5rem;padding:.65rem .9rem;background:#11141b;border:1px solid #1e2230;border-radius:6px';
-li.innerHTML = + "<input type=\"checkbox\" " + (todo.done?'checked':'') + " style=\"accent-color:#38bdf8\"><span style=\"flex:1" + (todo.done?';text-decoration:line-through;color:#64748b':'') + "\">" + (todo.text) + "</span><button data-i=\"" + (i) + "\" style=\"background:transparent;border:0;color:#f43f5e;cursor:pointer;font-size:1.1rem\">×</button>";
+li.innerHTML = '<input type="checkbox" ' + (todo.done?'checked':'') + ' style="accent-color:#38bdf8"><span style="flex:1' + (todo.done?';text-decoration:line-through;color:#64748b':'') + '">' + (todo.text) + '</span><button data-i="' + (i) + '" style="background:transparent;border:0;color:#f43f5e;cursor:pointer;font-size:1.1rem">×</button>';
 li.querySelector('input').onclick=()=>{todos[i].done=!todos[i].done;render()};
 li.querySelector('button').onclick=()=>{todos.splice(i,1);render()};
 list.appendChild(li)})}
@@ -458,7 +458,7 @@ document.getElementById('desc').textContent=d.d;
 document.querySelector('#out div').textContent=icons[d.d]||'☀️';
 const f=document.getElementById('forecast');f.innerHTML='';for(let i=0;i<5;i++){const day=['Mon','Tue','Wed','Thu','Fri'][(new Date().getDay()+i)%5];
 const t2=Math.max(5,Math.min(35,d.t+Math.round((Math.random()-.5)*8)));
-f.innerHTML += + "<div style=\"text-align:center;padding:.75rem;background:rgba(11,15,26,.5);border-radius:8px\"><div style=\"color:#94a3b8;font-size:.75rem\">" + (day) + "</div><div style=\"font-size:1.25rem;margin:.25rem 0\">" + (icons[d.d]||'☀️') + "</div><div style=\"font-weight:600\">" + (t2) + "°</div></div>";}}
+f.innerHTML += '<div style="text-align:center;padding:.75rem;background:rgba(11,15,26,.5);border-radius:8px"><div style="color:#94a3b8;font-size:.75rem">' + (day) + '</div><div style="font-size:1.25rem;margin:.25rem 0">' + (icons[d.d]||'☀️') + '</div><div style="font-weight:600">' + (t2) + '°</div></div>';}}
 document.getElementById('city').onchange=e=>show(e.target.value);show('San Francisco');
 </script>`, prompt);
 }
