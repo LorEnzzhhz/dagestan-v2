@@ -1776,6 +1776,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
+        // Don't show error dialogs during server stop — the user triggered it intentionally
+        if (isStoppingServer) {
+            Log.w(TAG, "Error while stopping (suppressed): $message")
+            return
+        }
         // Truncate long stack traces — show only the first meaningful line
         val friendlyMessage = message
             .split("\n")

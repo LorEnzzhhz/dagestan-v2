@@ -2203,6 +2203,14 @@ WEOF
             return true
         }
 
+        // Host-side kill first (before proot, since proot may not be running).
+        try {
+            Runtime.getRuntime().exec(arrayOf("sh", "-c",
+                "pkill -9 -f codex-web-local 2>/dev/null; pkill -9 -f 'node.*codex' 2>/dev/null"
+            )).waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (_: Exception) {}
+        Thread.sleep(500)
+
         // Aggressively kill any stale process occupying the server port.
         // Multiple fallback methods because pkill/fuser may not work in proot.
         try {
@@ -2827,6 +2835,7 @@ WEOF
             "GIT_TEMPLATE_DIR" to "${paths.prefixDir}/share/git-core/templates",
             "OPENSSL_CONF" to opensslConf,
             "NODE_OPTIONS" to nodeOptions,
+            "TERMUX_VERSION" to "0.118.0",
             "CONTAINER" to "1",
         )
 
