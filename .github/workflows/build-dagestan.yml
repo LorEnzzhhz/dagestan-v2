@@ -62,6 +62,17 @@ jobs:
         run: npx vitest run --reporter=dot || echo "::warning::Unit test failures present but not blocking (see logs)"
 
       # ── 2. Vite production build ─────────────────────────────────────────
+      - name: Stub secrets.local.json for build
+        # api-key-pool.ts does a dynamic import of this file; Rollup needs
+        # *something* to resolve. The dev workflow has the operator's real
+        # file (gitignored); CI gets a no-providers stub. Production builds
+        # that need real keys should pass them via the env at build time.
+        run: |
+          if [ ! -f secrets.local.json ]; then
+            echo '{ "providers": {} }' > secrets.local.json
+            echo "Stubbed secrets.local.json (no real keys in CI)"
+          fi
+
       - name: Build Vite web app
         run: npm run build
 
