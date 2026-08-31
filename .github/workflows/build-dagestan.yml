@@ -50,16 +50,13 @@ jobs:
         run: npm ci --no-audit --no-fund --include=optional
 
       - name: Lint
-        # Pre-existing 25 errors in the codebase block the build; surface them
-        # but don't gate the APK assembly on it. Re-enable `set -e` once the
-        # lint backlog is cleared.
-        run: npm run lint || echo "::warning::Lint errors present but not blocking (see logs)"
+        run: npm run lint
 
       - name: Type-check
         run: npx tsc -b
 
       - name: Unit tests
-        run: npx vitest run --reporter=dot || echo "::warning::Unit test failures present but not blocking (see logs)"
+        run: npx vitest run
 
       # ── 2. Vite production build ─────────────────────────────────────────
       - name: Build Vite web app
