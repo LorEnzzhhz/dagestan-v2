@@ -62,7 +62,11 @@ async function loadSecrets(): Promise<PoolKey[]> {
     // Vite serves files at the repo root via /<name>.json in dev.
     // In production builds, secrets.local.json is bundled if present
     // (see vite.config.ts → assetsInclude) and the import resolves.
-    const mod = await import(/* @vite-ignore */ "../../secrets.local.json");
+    // We build the specifier from a variable so Rollup treats it as a
+    // truly dynamic import and doesn't try to resolve it at build
+    // time when the file isn't present (the typical CI case).
+    const specifier = /* @vite-ignore */ "../../" + "secrets.local.json";
+    const mod = await import(/* @vite-ignore */ specifier).catch(() => ({ default: {}, providers: {} }));
     const providers = (mod.default?.providers ?? mod.providers ?? {}) as Record<string, Array<{ key: string; label?: string }>>;
     const out: PoolKey[] = [];
     for (const [provider, keys] of Object.entries(providers)) {
@@ -77,6 +81,9 @@ async function loadSecrets(): Promise<PoolKey[]> {
     _secretsCache = out;
     return out;
   } catch (e) {
+    // The dynamic-import above already catches its own errors. This
+    // block is here for the rare case where Object.entries / for-of
+    // throws on a malformed file.
     console.warn("[api-key-pool] failed to load secrets.local.json:", e);
     return [];
   }
