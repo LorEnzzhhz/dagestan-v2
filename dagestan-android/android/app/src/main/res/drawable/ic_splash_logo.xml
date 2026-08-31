@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Rounded badge -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M54,4 C79.4,4 100,24.6 100,50 L100,58 C100,83.4 79.4,104 54,104 C28.6,104 8,83.4 8,58 L8,50 C8,24.6 28.6,4 54,4 Z" />
+    <group
+        android:translateX="27"
+        android:translateY="27">
+        <!-- Mountain peak -->
+        <path
+            android:fillColor="#F8FAFC"
+            android:pathData="M27,6.5 L45.5,37 H8.5 Z" />
+        <!-- Republic flag bands: green / red / blue -->
+        <path
+            android:fillColor="#22C55E"
+            android:pathData="M9,39.5 h36 v3.2 h-36 z" />
+        <path
+            android:fillColor="#EF4444"
+            android:pathData="M9,44.4 h36 v3.2 h-36 z" />
+        <path
+            android:fillColor="#3B82F6"
+            android:pathData="M9,49.3 h36 v3.2 h-36 z" />
+    </group>
+</vector>

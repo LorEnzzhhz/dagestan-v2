@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Dagestan logo">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0f1a"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="peak" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset=".5" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <radialGradient id="star" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Sky background -->
+  <rect width="512" height="512" rx="96" fill="url(#sky)"/>
+
+  <!-- Stars -->
+  <g fill="#fff">
+    <circle cx="80"  cy="90"  r="2" opacity=".8"/>
+    <circle cx="140" cy="60"  r="1.4" opacity=".6"/>
+    <circle cx="220" cy="110" r="1.6" opacity=".7"/>
+    <circle cx="330" cy="70"  r="2"   opacity=".85"/>
+    <circle cx="400" cy="100" r="1.4" opacity=".55"/>
+    <circle cx="450" cy="160" r="1.6" opacity=".7"/>
+    <circle cx="60"  cy="180" r="1.4" opacity=".6"/>
+    <circle cx="180" cy="200" r="1.2" opacity=".5"/>
+    <circle cx="380" cy="200" r="1.4" opacity=".6"/>
+    <circle cx="450" cy="240" r="1.2" opacity=".5"/>
+  </g>
+
+  <!-- Glowing moon -->
+  <circle cx="380" cy="130" r="34" fill="url(#star)" opacity=".5"/>
+  <circle cx="380" cy="130" r="22" fill="#f1f5f9"/>
+  <circle cx="386" cy="124" r="18" fill="#0a0f1a" opacity=".15"/>
+
+  <!-- Back mountain (lighter) -->
+  <path d="M0 380 L120 240 L200 320 L280 220 L380 340 L460 270 L512 330 L512 512 L0 512 Z" fill="#1e3a5f" opacity=".85"/>
+
+  <!-- Front mountain (main) -->
+  <path d="M0 420 L100 300 L180 380 L256 240 L332 380 L412 300 L512 420 L512 512 L0 512 Z" fill="url(#peak)"/>
+
+  <!-- Snow caps -->
+  <path d="M256 240 L232 285 L256 270 L280 285 Z" fill="url(#snow)"/>
+  <path d="M100 300 L82 330 L100 320 L118 330 Z" fill="url(#snow)" opacity=".85"/>
+  <path d="M412 300 L394 330 L412 320 L430 330 Z" fill="url(#snow)" opacity=".85"/>
+
+  <!-- Foreground silhouette -->
+  <path d="M0 460 L60 430 L120 450 L180 425 L256 445 L332 425 L412 450 L470 430 L512 460 L512 512 L0 512 Z" fill="#020617" opacity=".8"/>
+
+  <!-- Brand text -->
+  <text x="256" y="500" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="38" font-weight="800" fill="#f1f5f9" letter-spacing="2">DAGESTAN</text>
+</svg>

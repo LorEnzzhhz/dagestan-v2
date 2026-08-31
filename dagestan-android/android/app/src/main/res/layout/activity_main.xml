@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#020617">
+
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- Native dashboard (shown after setup completes) -->
+    <include
+        android:id="@+id/dashboardView"
+        layout="@layout/dashboard_screen" />
+
+    <!-- Full-screen terminal overlay -->
+    <include
+        android:id="@+id/terminalView"
+        layout="@layout/terminal_screen" />
+
+    <!-- Full-screen settings overlay -->
+    <include
+        android:id="@+id/settingsView"
+        layout="@layout/settings_screen" />
+
+    <LinearLayout
+        android:id="@+id/loadingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:background="#020617">
+
+        <!-- Pulsing logo -->
+        <ImageView
+            android:id="@+id/splashLogo"
+            android:layout_width="104dp"
+            android:layout_height="104dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/ic_splash_logo" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/app_name"
+            android:textColor="#F8FAFC"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.06" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Unlimited AI · No paywall · No ads"
+            android:textColor="#34D399"
+            android:textSize="12sp"
+            android:letterSpacing="0.08"
+            android:textAllCaps="true" />
+
+        <!-- Step checklist -->
+        <LinearLayout
+            android:id="@+id/stepList"
+            android:layout_width="260dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:orientation="vertical">
+
+            <include android:id="@+id/step1" layout="@layout/setup_step_row" />
+            <include android:id="@+id/step2" layout="@layout/setup_step_row" />
+            <include android:id="@+id/step3" layout="@layout/setup_step_row" />
+            <include android:id="@+id/step4" layout="@layout/setup_step_row" />
+            <include android:id="@+id/step5" layout="@layout/setup_step_row" />
+            <include android:id="@+id/step6" layout="@layout/setup_step_row" />
+        </LinearLayout>
+
+        <!-- Animated flag-gradient progress track -->
+        <FrameLayout
+            android:layout_width="240dp"
+            android:layout_height="4dp"
+            android:layout_marginTop="26dp"
+            android:background="#1E293B">
+
+            <View
+                android:id="@+id/progressTrack"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/progress_gradient"
+                android:animateLayoutChanges="true" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/status_initializing"
+            android:textColor="#CBD5E1"
+            android:textSize="15sp"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/statusDetail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#64748B"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</FrameLayout>

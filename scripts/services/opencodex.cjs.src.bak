@@ -1,0 +1,80 @@
+const http = require('http');
+const OCX_HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Dagestan OpenCodex</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0f1a;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation}.wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;text-align:center}.icon{font-size:2.5rem;margin-bottom:.5rem}.h1{font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,#a78bfa,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sub{color:#94a3b8;margin-top:.5rem;font-size:.8rem}.card{margin-top:1.5rem;padding:1rem;border:1px solid rgba(255,255,255,.1);border-radius:.75rem;background:#1e293b;width:100%;max-width:320px}.row{display:flex;justify-content:space-between;padding:.35rem 0;font-size:.75rem}.lbl{color:#94a3b8}.val{font-weight:600;font-family:monospace;font-size:.7rem}.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:.25rem}.g{background:#4ade80;box-shadow:0 0 6px #4ade80}.providers{margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.08)}.ptag{display:inline-block;padding:.15rem .4rem;margin:.15rem;border-radius:.25rem;font-size:.6rem;font-weight:600}.pz{background:rgba(74,222,128,.15);color:#4ade80}.po{background:rgba(56,189,248,.15);color:#38bdf8}.pn{background:rgba(167,139,250,.15);color:#a78bfa}</style></head><body><div class="wrap"><div class="icon">\u{1F310}</div><div class="h1">Dagestan OpenCodex</div><div class="sub">Universal LLM API proxy</div><div class="card"><div class="row"><span class="lbl">Status</span><span class="val"><span class="dot g"></span>Running</span></div><div class="row"><span class="lbl">Port</span><span class="val">10101</span></div><div class="row"><span class="lbl">Endpoint</span><span class="val">/v1/chat/completions</span></div><div class="providers"><span class="ptag pz">Zen</span><span class="ptag po">OpenRouter</span><span class="ptag pn">NVIDIA</span></div></div></div></body></html>';
+const http_proxy = require('http');
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+}
+
+function proxyChat(payload) {
+  return new Promise((resolve, reject) => {
+    const upstream = process.env.DAGESTAN_LOCAL_MODELS || 'http://127.0.0.1:18927';
+    const body = JSON.stringify({ ...payload, stream: false });
+    const u = new URL(upstream + '/v1/chat/completions');
+    const r = http_proxy.request({
+      method: 'POST',
+      hostname: u.hostname, port: u.port || 80, path: u.pathname,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, (resp) => {
+      const chunks = [];
+      resp.on('data', (c) => chunks.push(c));
+      resp.on('end', () => resolve({ status: resp.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+    });
+    r.on('error', reject);
+    r.write(body); r.end();
+  });
+}
+
+function proxyStream(payload, res) {
+  const upstream = process.env.DAGESTAN_LOCAL_MODELS || 'http://127.0.0.1:18927';
+  const body = JSON.stringify({ ...payload, stream: true });
+  const u = new URL(upstream + '/v1/chat/completions');
+  const r = http_proxy.request({
+    method: 'POST',
+    hostname: u.hostname, port: u.port || 80, path: u.pathname,
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  }, (resp) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+    resp.pipe(res);
+  });
+  r.on('error', () => { try { res.end(); } catch {} });
+  r.write(body); r.end();
+}
+
+const server = http.createServer(async (req, res) => {
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('Access-Control-Allow-Origin','*');
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  if (req.url === '/readyz') { res.writeHead(200); res.end('ok'); return; }
+  if (req.url === '/v1/models') {
+    res.writeHead(200, {'Content-Type':'application/json'});
+    return res.end(JSON.stringify({object:'list',data:[{id:'local',object:'model',owned_by:'dagestan'}]}));
+  }
+  if (req.method === 'POST' && req.url === '/v1/chat/completions') {
+    const raw = await readBody(req);
+    let payload = {};
+    try { payload = JSON.parse(raw); } catch (e) { res.writeHead(400); return res.end(JSON.stringify({error:'invalid_json'})); }
+    if (payload.stream === true) return proxyStream(payload, res);
+    try {
+      const r = await proxyChat(payload);
+      res.writeHead(r.status, {'Content-Type':'application/json'});
+      return res.end(r.body);
+    } catch (e) {
+      res.writeHead(502, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({error:'upstream_unreachable', message: String(e.message || e)}));
+    }
+  }
+  res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache'});
+  res.end(OCX_HTML);
+});
+server.listen(10101, '0.0.0.0', () => console.log('OpenCodex proxy on :10101'));
+process.on('uncaughtException', (e) => { console.error('OpenCodex err:', e.message); });

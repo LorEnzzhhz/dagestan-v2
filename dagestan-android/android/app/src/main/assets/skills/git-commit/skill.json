@@ -1,0 +1,6 @@
+{
+  "name": "git-commit",
+  "version": "0.1.0",
+  "permissions": ["shell:git"],
+  "entry": "run.sh"
+}

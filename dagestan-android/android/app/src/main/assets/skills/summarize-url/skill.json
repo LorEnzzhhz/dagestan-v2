@@ -1,0 +1,6 @@
+{
+  "name": "summarize-url",
+  "version": "0.1.0",
+  "permissions": ["network:read"],
+  "entry": "run.sh"
+}

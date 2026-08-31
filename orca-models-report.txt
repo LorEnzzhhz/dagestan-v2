@@ -1,0 +1,206 @@
+=== COUNTS ===
+{
+  "router-route": 5,
+  "paid": 183,
+  "free": 3
+}
+
+=== TOTAL: 191 ===
+
+
+── FREE (3) ──
+  deepseek/deepseek-v4-flash-free (free, request)
+  qwen/qwen3.8-27b-free ctx=65,536 (free, request)
+  tencent/hy3-free (free, request)
+
+── PAID (183) ──
+  anthropic/claude-fable-5 ctx=1,000,000 $10/$50 per M tokens
+  anthropic/claude-haiku-4.5 ctx=200,000 $1/$5 per M tokens
+  anthropic/claude-opus-4.5 ctx=200,000 $5/$25 per M tokens
+  anthropic/claude-opus-4.6 ctx=1,000,000 $5/$25 per M tokens
+  anthropic/claude-opus-4.7 ctx=1,000,000 $5/$25 per M tokens
+  anthropic/claude-opus-4.8 ctx=1,000,000 $5/$25 per M tokens
+  anthropic/claude-opus-5 ctx=1,000,000 $5/$25 per M tokens
+  anthropic/claude-sonnet-4.6 ctx=1,000,000 $3/$15 per M tokens
+  anthropic/claude-sonnet-5 ctx=1,000,000 $2/$10 per M tokens
+  codex-auto-review $0.2/$1.2 per M tokens
+  deepseek/deepseek-chat ctx=1,048,576 $0.147/$0.295 per M tokens
+  deepseek/deepseek-reasoner ctx=1,048,576 $0.147/$0.295 per M tokens
+  deepseek/deepseek-v4-flash ctx=1,048,576 $0.147/$0.295 per M tokens
+  deepseek/deepseek-v4-flash-0731 ctx=1,048,576 $0.147/$0.295 per M tokens
+  deepseek/deepseek-v4-flash-vision-exp ctx=1,048,576 $0.147/$0.295 per M tokens
+  deepseek/deepseek-v4-pro ctx=1,048,576 $0.442/$0.884 per M tokens
+  deepseek/deepseek-v4-pro-0813 ctx=1,048,576 $0.442/$0.884 per M tokens
+  google/gemini-2.5-flash ctx=1,048,576 $0.3/$2.5 per M tokens
+  google/gemini-2.5-flash-image ctx=32,768 $0.3/$30 per M tokens
+  google/gemini-2.5-flash-lite ctx=1,048,576 $0.1/$0.4 per M tokens
+  google/gemini-2.5-flash-preview-tts $0.5/$10 per M tokens
+  google/gemini-2.5-pro ctx=1,048,576 $2.5/$15 per M tokens
+  google/gemini-2.5-pro-preview-tts $1/$20 per M tokens
+  google/gemini-3-flash-preview ctx=1,048,576 $0.5/$3 per M tokens
+  google/gemini-3-pro-image-preview ctx=65,536 $0.24 per request
+  google/gemini-3.1-flash-image-preview ctx=65,536 $0.151 per request
+  google/gemini-3.1-flash-lite $0.25/$1.5 per M tokens
+  google/gemini-3.1-flash-lite-preview ctx=1,048,576 $0.25/$1.5 per M tokens
+  google/gemini-3.1-flash-tts-preview $1/$20 per M tokens
+  google/gemini-3.1-pro-preview ctx=1,048,576 $2/$12 per M tokens
+  google/gemini-3.1-pro-preview-customtools ctx=1,048,576 $4/$18 per M tokens
+  google/gemini-3.5-flash ctx=1,048,576 $1.5/$9 per M tokens
+  google/gemini-3.5-flash-lite ctx=1,048,576 $0.3/$2.5 per M tokens
+  google/gemini-3.6-flash ctx=1,048,576 $1.5/$7.5 per M tokens
+  google/gemini-embedding-001 $0.15/$0 per M tokens
+  google/gemini-embedding-2-preview $0.2/$0.2 per M tokens
+  google/gemini-flash-latest $0.5/$3 per M tokens
+  google/gemini-flash-lite-latest $0.25/$1.5 per M tokens
+  google/gemini-pro-latest $4/$18 per M tokens
+  google/gemini-robotics-er-1.6-preview $1/$5 per M tokens
+  google/gemma-4-26b-a4b-it ctx=262,144 $0.06/$0.33 per M tokens
+  google/gemma-4-31b-it $0.13/$0.38 per M tokens
+  google/imagen-4.0-fast-generate-001 $0.02 per request
+  google/imagen-4.0-generate-001 $0.04 per request
+  google/imagen-4.0-ultra-generate-001 $0.06 per request
+  gpt-5.6-luna ctx=1,050,000 $0.2/$1.6 per M tokens
+  grok/grok-4.3 ctx=1,000,000 $1.25/$2.5 per M tokens
+  grok/grok-4.5 ctx=500,000 $2/$6 per M tokens
+  grok/grok-4.6 ctx=500,000 $2/$6 per M tokens
+  grok/grok-imagine-image $0.2 per request
+  kimi/kimi-k2.5 ctx=262,144 $0.6/$3 per M tokens
+  kimi/kimi-k2.6 ctx=262,144 $0.95/$4 per M tokens
+  kimi/kimi-k2.7-code ctx=262,144 $0.95/$4 per M tokens
+  kimi/kimi-k3 ctx=1,048,576 $3/$15 per M tokens
+  kling/kling-3-turbo $0.112 per request
+  kling/kling-v2-1-master $0.28 per request
+  kling/kling-v2-5-turbo $0.042 per request
+  kling/kling-v2-6 $0.042 per request
+  kling/kling-v2-master $0.28 per request
+  kling/kling-v3 $0.084 per request
+  kling/kling-v3-omni $0.084 per request
+  kling/kling-video-o1 $0.084 per request
+  meta/muse-spark-1.1 ctx=1,048,576 $1.25/$4.25 per M tokens
+  meta/muse-spark-1.2 ctx=1,048,576 $1.25/$4.25 per M tokens
+  minimax/minimax-h3 $0.08 per second
+  minimax/minimax-m2.5 ctx=204,800 $0.3/$1.2 per M tokens
+  minimax/minimax-m2.5-highspeed ctx=204,800 $0.6/$2.4 per M tokens
+  minimax/minimax-m2.7 ctx=204,800 $0.3/$1.2 per M tokens
+  minimax/minimax-m2.7-highspeed ctx=204,800 $0.6/$2.4 per M tokens
+  minimax/minimax-m3 ctx=1,048,576 $0.3/$1.2 per M tokens
+  obsidian/gemma-4-26B-A4B ctx=262,144 $0.25/$2.9 per M tokens
+  obsidian/Qwen3.6-35B-A3B ctx=262,144 $0.31/$4.21 per M tokens
+  obsidian/Qwen3.8-27B ctx=262,144 $0.4/$4.21 per M tokens
+  openai/gpt-3.5-turbo ctx=16,385 $0.5/$1.5 per M tokens
+  openai/gpt-3.5-turbo-0125 $0.5/$1.5 per M tokens
+  openai/gpt-3.5-turbo-1106 $1/$2 per M tokens
+  openai/gpt-3.5-turbo-16k ctx=16,385 $3/$4 per M tokens
+  openai/gpt-4 ctx=8,191 $30/$60 per M tokens
+  openai/gpt-4-0613 $30/$60 per M tokens
+  openai/gpt-4-turbo ctx=128,000 $10/$30 per M tokens
+  openai/gpt-4-turbo-2024-04-09 ctx=128,000 $10/$30 per M tokens
+  openai/gpt-4.1 ctx=1,047,576 $2/$8 per M tokens
+  openai/gpt-4.1-2025-04-14 ctx=1,047,576 $2/$8 per M tokens
+  openai/gpt-4.1-mini ctx=1,047,576 $0.4/$1.6 per M tokens
+  openai/gpt-4.1-mini-2025-04-14 ctx=1,047,576 $0.4/$1.6 per M tokens
+  openai/gpt-4.1-nano ctx=1,047,576 $0.1/$0.4 per M tokens
+  openai/gpt-4.1-nano-2025-04-14 ctx=1,047,576 $0.1/$0.4 per M tokens
+  openai/gpt-4o ctx=128,000 $2.5/$10 per M tokens
+  openai/gpt-4o-2024-05-13 ctx=128,000 $5/$15 per M tokens
+  openai/gpt-4o-2024-08-06 ctx=128,000 $2.5/$10 per M tokens
+  openai/gpt-4o-2024-11-20 ctx=128,000 $2.5/$10 per M tokens
+  openai/gpt-4o-mini ctx=128,000 $0.15/$0.6 per M tokens
+  openai/gpt-4o-mini-2024-07-18 ctx=128,000 $0.15/$0.6 per M tokens
+  openai/gpt-4o-mini-tts $0.6/$12 per M tokens
+  openai/gpt-4o-mini-tts-2025-03-20 $0.6/$12 per M tokens
+  openai/gpt-4o-mini-tts-2025-12-15 $0.6/$12 per M tokens
+  openai/gpt-5 ctx=400,000 $1.25/$10 per M tokens
+  openai/gpt-5-2025-08-07 ctx=400,000 $1.25/$10 per M tokens
+  openai/gpt-5-chat-latest $1.25/$10 per M tokens
+  openai/gpt-5-mini ctx=400,000 $0.25/$2 per M tokens
+  openai/gpt-5-mini-2025-08-07 ctx=400,000 $0.25/$2 per M tokens
+  openai/gpt-5-nano ctx=400,000 $0.05/$0.4 per M tokens
+  openai/gpt-5-nano-2025-08-07 ctx=400,000 $0.05/$0.4 per M tokens
+  openai/gpt-5-pro ctx=400,000 $15/$120 per M tokens
+  openai/gpt-5-pro-2025-10-06 ctx=400,000 $15/$120 per M tokens
+  openai/gpt-5-search-api $1.25/$10 per M tokens
+  openai/gpt-5-search-api-2025-10-14 $1.25/$10 per M tokens
+  openai/gpt-5.1 ctx=400,000 $1.25/$10 per M tokens
+  openai/gpt-5.1-2025-11-13 ctx=400,000 $1.25/$10 per M tokens
+  openai/gpt-5.1-chat-latest $1.25/$10 per M tokens
+  openai/gpt-5.1-codex ctx=400,000 $1.25/$10 per M tokens
+  openai/gpt-5.1-codex-mini ctx=400,000 $0.25/$2 per M tokens
+  openai/gpt-5.2 ctx=400,000 $1.75/$14 per M tokens
+  openai/gpt-5.2-2025-12-11 ctx=400,000 $1.75/$14 per M tokens
+  openai/gpt-5.2-chat-latest $1.75/$14 per M tokens
+  openai/gpt-5.2-codex ctx=400,000 $1.75/$14 per M tokens
+  openai/gpt-5.2-pro ctx=400,000 $21/$168 per M tokens
+  openai/gpt-5.2-pro-2025-12-11 ctx=400,000 $21/$168 per M tokens
+  openai/gpt-5.3-codex ctx=400,000 $1.75/$14 per M tokens
+  openai/gpt-5.4 ctx=1,050,000 $5/$22.5 per M tokens
+  openai/gpt-5.4-2026-03-05 ctx=1,050,000 $5/$22.5 per M tokens
+  openai/gpt-5.4-mini ctx=400,000 $0.75/$4.5 per M tokens
+  openai/gpt-5.4-mini-2026-03-17 $0.75/$4.5 per M tokens
+  openai/gpt-5.4-nano ctx=400,000 $0.2/$1.25 per M tokens
+  openai/gpt-5.4-nano-2026-03-17 $0.2/$1.25 per M tokens
+  openai/gpt-5.4-pro ctx=1,050,000 $60/$270 per M tokens
+  openai/gpt-5.4-pro-2026-03-05 ctx=1,050,000 $60/$270 per M tokens
+  openai/gpt-5.5 $5/$30 per M tokens
+  openai/gpt-5.5-2026-04-23 $10/$45 per M tokens
+  openai/gpt-5.5-pro $30/$180 per M tokens
+  openai/gpt-5.5-pro-2026-04-23 $60/$270 per M tokens
+  openai/gpt-5.6-luna ctx=1,050,000 $0.2/$1.2 per M tokens
+  openai/gpt-5.6-sol ctx=1,050,000 $4/$20 per M tokens
+  openai/gpt-5.6-terra ctx=1,050,000 $2/$12 per M tokens
+  openai/gpt-image-1 $5/$40 per M tokens
+  openai/gpt-image-1-mini $2/$8 per M tokens
+  openai/gpt-image-1.5 $8/$32 per M tokens
+  openai/gpt-image-2 $8/$30 per M tokens
+  openai/gpt-oss-120b ctx=131,072 $0.03/$0.17 per M tokens
+  openai/text-embedding-3-large $0.13/$0.13 per M tokens
+  openai/text-embedding-3-small $0.02/$0.02 per M tokens
+  openai/text-embedding-ada-002 $0.1/$0.1 per M tokens
+  openai/tts-1 $15/$15 per M tokens
+  openai/tts-1-1106 $15/$15 per M tokens
+  openai/tts-1-hd $30/$30 per M tokens
+  openai/tts-1-hd-1106 $30/$30 per M tokens
+  orca/dub $0.6 per minute
+  qwen/qwen3-max ctx=262,144 $0.359/$1.434 per M tokens
+  qwen/qwen3-max-preview ctx=262,144 $0.861/$3.441 per M tokens
+  qwen/qwen3-vl-235b-a22b-instruct $0.4/$1.6 per M tokens
+  qwen/qwen3-vl-235b-a22b-thinking ctx=131,072 $0.4/$4 per M tokens
+  qwen/qwen3-vl-8b-instruct ctx=131,072 $0.18/$0.7 per M tokens
+  qwen/qwen3-vl-8b-thinking ctx=131,072 $0.18/$2.1 per M tokens
+  qwen/qwen3.5-122b-a10b ctx=32,768 $0.115/$0.917 per M tokens
+  qwen/qwen3.5-27b ctx=32,768 $0.086/$0.688 per M tokens
+  qwen/qwen3.5-35b-a3b ctx=32,768 $0.057/$0.459 per M tokens
+  qwen/qwen3.5-397b-a17b ctx=32,768 $0.172/$1.032 per M tokens
+  qwen/qwen3.5-flash ctx=1,048,576 $0.1/$0.4 per M tokens
+  qwen/qwen3.5-flash-2026-02-23 ctx=1,048,576 $0.1/$0.4 per M tokens
+  qwen/qwen3.5-plus ctx=1,048,576 $0.115/$0.688 per M tokens
+  qwen/qwen3.5-plus-2026-02-15 ctx=1,048,576 $0.115/$0.688 per M tokens
+  qwen/qwen3.6-35b-a3b ctx=262,144 $0.248/$1.485 per M tokens
+  qwen/qwen3.6-flash ctx=1,048,576 $0.25/$1.5 per M tokens
+  qwen/qwen3.6-flash-2026-04-16 ctx=1,048,576 $0.25/$1.5 per M tokens
+  qwen/qwen3.6-plus ctx=1,048,576 $0.5/$3 per M tokens
+  qwen/qwen3.6-plus-2026-04-02 ctx=1,048,576 $0.276/$1.651 per M tokens
+  qwen/qwen3.7-flash ctx=1,000,000 $0.03/$0.13 per M tokens
+  qwen/qwen3.7-max ctx=1,000,000 $1.25/$3.75 per M tokens
+  qwen/qwen3.7-max-2026-05-20 ctx=1,000,000 $1.25/$3.75 per M tokens
+  qwen/qwen3.7-plus ctx=1,000,000 $0.35/$1.42 per M tokens
+  qwen/qwen3.8-27b ctx=262,144 $0.33/$2.4 per M tokens
+  qwen/qwen3.8-flash ctx=1,000,000 $0.15/$0.47 per M tokens
+  qwen/qwen3.8-max ctx=1,000,000 $2/$6 per M tokens
+  tencent/hy3 ctx=262,144 $0.18/$0.59 per M tokens
+  z-ai/glm-4.5 ctx=128,000 $0.6/$2.2 per M tokens
+  z-ai/glm-4.5-air ctx=128,000 $0.2/$1.1 per M tokens
+  z-ai/glm-4.6 ctx=200,000 $0.6/$2.2 per M tokens
+  z-ai/glm-4.7 ctx=200,000 $0.6/$2.2 per M tokens
+  z-ai/glm-5 ctx=200,000 $1/$3.2 per M tokens
+  z-ai/glm-5.1 ctx=200,000 $1.4/$4.4 per M tokens
+  z-ai/glm-5.2 ctx=1,000,000 $1.4/$4.4 per M tokens
+  z-ai/glm-5.3 ctx=1,000,000 $1.26/$3.96 per M tokens
+  z-ai/glm-5.3-flash ctx=1,000,000 $0.075/$0.25 per M tokens
+
+── ROUTER-ROUTE (5) ──
+  orcarouter/auto
+  orcarouter/free
+  orcarouter/fusion ctx=1,000,000
+  orcarouter/fusion-flash ctx=200,000
+  orcarouter/fusion-mini ctx=1,000,000

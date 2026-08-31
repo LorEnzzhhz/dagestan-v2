@@ -1,0 +1,86 @@
+const http = require('http');
+const HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Dagestan Hermes</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0f1a;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation;display:flex;flex-direction:column;height:100vh;height:100dvh}header{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:.5rem;background:#0a0f1a;flex-shrink:0}.logo{font-size:1.2rem}.title{font-size:1rem;background:linear-gradient(135deg,#38bdf8,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}.sub{margin-left:auto;font-size:.7rem;color:#64748b}#chat{flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.5rem}.msg{max-width:82%;padding:.6rem .9rem;border-radius:1rem;font-size:.85rem;line-height:1.45}.user{align-self:flex-end;background:#38bdf8;color:#0f172a;border-bottom-right-radius:.25rem}.ai{align-self:flex-start;background:#1e293b;border-bottom-left-radius:.25rem}.bar{display:flex;gap:.5rem;padding:.7rem 1rem;border-top:1px solid rgba(255,255,255,.1);background:#0a0f1a;flex-shrink:0}input{flex:1;background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:.75rem;padding:.55rem 1rem;color:#e2e8f0;font-size:.85rem;outline:none;-webkit-appearance:none}button{background:linear-gradient(135deg,#22d3ee,#8b5cf6);border:none;color:#fff;border-radius:.75rem;padding:.55rem 1.2rem;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}</style></head><body><header><span class="logo">\u{1F9ED}</span><span class="title">Hermes</span><span class="sub">local</span></header><div id="chat"></div><div class="bar"><input id="in" placeholder="Type a message..." enterkeyhint="send"><button id="B">Send</button></div><script>var C=document.getElementById("chat"),I=document.getElementById("in"),B=document.getElementById("B");function A(r,t){var d=document.createElement("div");d.className="msg "+(r==="user"?"user":"ai");d.textContent=t;C.appendChild(d);C.scrollTop=C.scrollHeight}function S(){var t=I.value.trim();if(!t)return;A("user",t);I.value="";setTimeout(function(){A("ai","Hermes is running locally. Connect to a provider in Settings.")},300)}B.onclick=S;I.addEventListener("keydown",function(e){if(e.key==="Enter")S()})</script></body></html>';
+const http_proxy = require('http');
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+}
+
+function proxyChat(payload) {
+  return new Promise((resolve, reject) => {
+    const upstream = process.env.DAGESTAN_LOCAL_MODELS || 'http://127.0.0.1:18927';
+    const body = JSON.stringify({ ...payload, stream: false });
+    const u = new URL(upstream + '/v1/chat/completions');
+    const r = http_proxy.request({
+      method: 'POST',
+      hostname: u.hostname,
+      port: u.port || 80,
+      path: u.pathname,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, (resp) => {
+      const chunks = [];
+      resp.on('data', (c) => chunks.push(c));
+      resp.on('end', () => resolve({ status: resp.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+    });
+    r.on('error', reject);
+    r.write(body);
+    r.end();
+  });
+}
+
+function proxyStream(payload, res) {
+  const upstream = process.env.DAGESTAN_LOCAL_MODELS || 'http://127.0.0.1:18927';
+  const body = JSON.stringify({ ...payload, stream: true });
+  const u = new URL(upstream + '/v1/chat/completions');
+  const r = http_proxy.request({
+    method: 'POST',
+    hostname: u.hostname,
+    port: u.port || 80,
+    path: u.pathname,
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  }, (resp) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+    resp.pipe(res);
+  });
+  r.on('error', () => { try { res.end(); } catch {} });
+  r.write(body);
+  r.end();
+}
+
+const server = http.createServer(async (req, res) => {
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('Access-Control-Allow-Origin','*');
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  if (req.url === '/readyz') { res.writeHead(200); res.end('ok'); return; }
+  if (req.url === '/v1/models') {
+    res.writeHead(200, {'Content-Type':'application/json'});
+    return res.end(JSON.stringify({object:'list',data:[{id:'local',object:'model',owned_by:'dagestan'}]}));
+  }
+  if (req.method === 'POST' && req.url === '/v1/chat/completions') {
+    const raw = await readBody(req);
+    let payload = {};
+    try { payload = JSON.parse(raw); } catch (e) { res.writeHead(400); return res.end(JSON.stringify({error:'invalid_json'})); }
+    if (payload.stream === true) return proxyStream(payload, res);
+    try {
+      const r = await proxyChat(payload);
+      res.writeHead(r.status, {'Content-Type':'application/json'});
+      return res.end(r.body);
+    } catch (e) {
+      res.writeHead(502, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({error:'upstream_unreachable', message: String(e.message || e)}));
+    }
+  }
+  res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache'});
+  res.end(HTML);
+});
+server.listen(8788, '0.0.0.0', () => console.log('Hermes Web UI on :8788'));
+process.on('uncaughtException', (e) => { console.error('Hermes err:', e.message); });

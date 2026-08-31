@@ -1,0 +1,198 @@
+name: Build Dagestan APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "dagestan-android/**"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "bun.lock"
+      - ".github/workflows/build-dagestan.yml"
+      - "eslint.config.js"
+      - "tsconfig*.json"
+      - "vitest.config.ts"
+      - "vite.config.ts"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dagestan-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 1. Web lint + test (fail fast before downloading 30 MB bootstrap) ──
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install web dependencies (npm)
+        # NPM_CONFIG_FORCE=true is required so npm installs the x64 native
+        # binaries (@rollup/rollup-linux-x64-gnu, lightningcss-linux-x64-gnu,
+        # @esbuild/linux-x64) even when the lockfile was generated on aarch64.
+        # Without it, npm 10 skips foreign-arch optional modules with EUNSUPPORTEDPROTOCOL.
+        env:
+          NPM_CONFIG_FORCE: "true"
+        run: npm ci --no-audit --no-fund --include=optional
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npx tsc -b
+
+      - name: Unit tests
+        run: npx vitest run
+
+      # ── 2. Vite production build ─────────────────────────────────────────
+      - name: Build Vite web app
+        run: npm run build
+
+      - name: Copy Vite dist into Android assets
+        run: |
+          mkdir -p dagestan-android/android/app/src/main/assets/web
+          cp -r dist/* dagestan-android/android/app/src/main/assets/web/
+          echo "Vite build bundled into APK assets:"
+          ls -lh dagestan-android/android/app/src/main/assets/web/
+
+      
+      - name: Build and bundle server into APK assets
+        run: |
+          cd dagestan-android/android
+          chmod +x scripts/build-server-bundle.sh
+          bash scripts/build-server-bundle.sh
+          echo "Server bundle ready:"
+          find app/src/main/assets/server-bundle -type f 2>/dev/null | head -10 || echo "(pending build)"
+          echo "---"
+
+      # ── 3. Android toolchain ──────────────────────────────────────────────
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Gradle 8.11.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      # ── 4. Termux bootstrap — cached, only re-downloaded when version changes ─
+      - name: Read bootstrap version
+        id: bootver
+        run: |
+          # Extract BOOTSTRAP_VERSION from the download script so the cache key
+          # is automatically invalidated when we bump it.
+          V=$(grep -oE 'BOOTSTRAP_VERSION="[^"]+"' dagestan-android/android/scripts/download-bootstrap.sh | head -1 | sed 's/.*"\(.*\)"/\1/')
+          if [ -z "$V" ]; then
+            V=$(grep -oE 'BOOTSTRAP_VERSION=[^[:space:]]+' dagestan-android/android/scripts/download-bootstrap.sh | head -1 | cut -d= -f2 | tr -d '"')
+          fi
+          echo "version=${V:-unknown}" >> "$GITHUB_OUTPUT"
+          echo "Termux bootstrap version: $V"
+
+      - name: Restore Termux bootstrap from cache
+        id: bootcache
+        uses: actions/cache@v4
+        with:
+          path: dagestan-android/android/app/src/main/assets/bootstrap-aarch64.zip
+          key: termux-bootstrap-aarch64-${{ steps.bootver.outputs.version }}
+          restore-keys: |
+            termux-bootstrap-aarch64-
+
+      - name: Download Termux bootstrap (~30MB)
+        if: steps.bootcache.outputs.cache-hit != 'true'
+        run: bash dagestan-android/android/scripts/download-bootstrap.sh aarch64
+
+      # ── 5. Bundle OpenCodex + Hermes into APK assets ─────────────────────
+      - name: Pre-bundle OpenCodex + Hermes into APK assets
+        run: bash dagestan-android/android/scripts/bundle-packages.sh
+
+      # Guard against silent 0-byte downloads: each tgz must be > 100 KB.
+      - name: Verify bundle sizes
+        run: |
+          set -euo pipefail
+          PKG_DIR=dagestan-android/android/app/src/main/assets/packages
+          for f in opencodex.tgz hermes-webui.tgz bun.deb; do
+            if [ ! -s "$PKG_DIR/$f" ]; then
+              echo "::error::Bundle $f is missing or empty"
+              ls -lh "$PKG_DIR" || true
+              exit 1
+            fi
+            SIZE=$(stat -c%s "$PKG_DIR/$f")
+            if [ "$SIZE" -lt 102400 ]; then
+              echo "::error::Bundle $f is only ${SIZE} bytes (expected > 100 KB). Likely a silent download failure."
+              ls -lh "$PKG_DIR" || true
+              exit 1
+            fi
+            echo "✓ $f = ${SIZE} bytes"
+          done
+
+      # ── 6. Build the debug APK ────────────────────────────────────────────
+      - name: Build debug APK (signed, installable)
+        working-directory: dagestan-android/android
+        run: gradle assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: |
+          cp dagestan-android/android/app/build/outputs/apk/debug/app-debug.apk \
+             dagestan-android/android/app/build/outputs/apk/debug/dagestan.apk
+          ls -lh dagestan-android/android/app/build/outputs/apk/debug/
+
+      - name: Verify APK signature
+        run: |
+          APK=dagestan-android/android/app/build/outputs/apk/debug/dagestan.apk
+          if command -v apksigner >/dev/null 2>&1; then
+            apksigner verify --verbose "$APK"
+          else
+            unzip -l "$APK" | grep -E 'META-INF/.*\.(RSA|DSA|EC)' | head -3
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dagestan-apk
+          path: dagestan-android/android/app/build/outputs/apk/debug/dagestan.apk
+          if-no-files-found: error
+
+      # ── 7. Ship to GitHub Releases ────────────────────────────────────────
+      - name: Read app version
+        id: ver
+        run: |
+          V=$(grep -oP 'versionName\s*=\s*"\K[^"]+' dagestan-android/android/app/build.gradle.kts)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Dagestan app version: $V"
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dagestan-v${{ steps.ver.outputs.version }}
+          name: "Dagestan v${{ steps.ver.outputs.version }}"
+          body: |
+            🏔 **Dagestan v${{ steps.ver.outputs.version }}** — OpenClaw + Codex on Android
+
+            📱 Install `dagestan.apk` on any ARM64 Android 7.0+ device. No root required.
+
+            > Signed with an ephemeral CI key. When updating from a previous
+            > Dagestan build, uninstall the old app first if Android refuses
+            > the install ("App not installed").
+
+            ---
+            Built from commit ${{ github.sha }} (lint ✓ · type-check ✓ · tests ✓)
+          files: dagestan-android/android/app/build/outputs/apk/debug/dagestan.apk
+          draft: false
+          prerelease: false

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Completed step: filled green check -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="16dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#22C55E"
+        android:pathData="M12,2 A10,10 0 1,0 12,22 A10,10 0 1,0 12,2 Z" />
+    <path
+        android:strokeColor="#052E16"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7.5,12.5 L10.5,15.5 L16.5,9" />
+</vector>

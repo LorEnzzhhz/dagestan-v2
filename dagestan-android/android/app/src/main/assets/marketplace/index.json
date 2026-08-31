@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "updated": "2026-08-29",
+  "skills": [
+    {
+      "name": "summarize-url",
+      "version": "0.1.0",
+      "title": "Summarize URL",
+      "description": "Fetch a URL and return a 3-bullet TL;DR. Uses curl + a small prompt template.",
+      "tags": ["web", "reading", "research"],
+      "author": "Dagestan",
+      "asset": "skills/summarize-url"
+    },
+    {
+      "name": "git-commit",
+      "version": "0.1.0",
+      "title": "Git commit message",
+      "description": "Reads git diff from stdin and emits a conventional-commit message.",
+      "tags": ["git", "dev"],
+      "author": "Dagestan",
+      "asset": "skills/git-commit"
+    },
+    {
+      "name": "explain-stacktrace",
+      "version": "0.1.0",
+      "title": "Explain stack trace",
+      "description": "Paste a stack trace and get a plain-English explanation of the most likely cause.",
+      "tags": ["debug", "dev"],
+      "author": "Dagestan",
+      "asset": "skills/explain-stacktrace"
+    }
+  ]
+}

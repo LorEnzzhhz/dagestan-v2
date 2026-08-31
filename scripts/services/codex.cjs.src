@@ -1,0 +1,92 @@
+const FREE_MODELS = [{"id":"openrouter/free","object":"model","owned_by":"openrouter","context_length":32768,"free":true},{"id":"meituan/longcat-flash-chat:free","object":"model","owned_by":"meituan","context_length":32768,"free":true},{"id":"deepseek/deepseek-chat-v3-0324:free","object":"model","owned_by":"deepseek","context_length":32768,"free":true},{"id":"meta-llama/llama-3.3-70b-instruct:free","object":"model","owned_by":"meta-llama","context_length":32768,"free":true},{"id":"google/gemma-3-27b-it:free","object":"model","owned_by":"google","context_length":32768,"free":true},{"id":"qwen/qwen3-coder:free","object":"model","owned_by":"qwen","context_length":32768,"free":true},{"id":"nousresearch/hermes-3-llama-3.1-405b:free","object":"model","owned_by":"nousresearch","context_length":32768,"free":true},{"id":"nousresearch/hermes-3-llama-3.1-70b:free","object":"model","owned_by":"nousresearch","context_length":32768,"free":true},{"id":"inclusionai/ling-3.0-flash-fin:free","object":"model","owned_by":"inclusionai","context_length":32768,"free":true},{"id":"dots-studio/dots-3-note-preview:free","object":"model","owned_by":"dots-studio","context_length":32768,"free":true},{"id":"liquid/lfm-2.5-2.6b:free","object":"model","owned_by":"liquid","context_length":32768,"free":true},{"id":"nvidia/nemotron-3.5-lightning:free","object":"model","owned_by":"nvidia","context_length":32768,"free":true},{"id":"thinkingmachines/inkling-small:free","object":"model","owned_by":"thinkingmachines","context_length":32768,"free":true},{"id":"poolside/laguna-s-2.1:free","object":"model","owned_by":"poolside","context_length":32768,"free":true},{"id":"thinkingmachines/inkling:free","object":"model","owned_by":"thinkingmachines","context_length":32768,"free":true},{"id":"poolside/laguna-xs-2.1:free","object":"model","owned_by":"poolside","context_length":32768,"free":true},{"id":"cohere/north-mini-code:free","object":"model","owned_by":"cohere","context_length":32768,"free":true},{"id":"z-ai/glm-5.2:free","object":"model","owned_by":"z-ai","context_length":32768,"free":true},{"id":"nvidia/nemotron-3-ultra-550b-a55b:free","object":"model","owned_by":"nvidia","context_length":32768,"free":true},{"id":"google/gemma-4-26b-a4b-it:free","object":"model","owned_by":"google","context_length":32768,"free":true},{"id":"google/gemma-4-31b-it:free","object":"model","owned_by":"google","context_length":32768,"free":true},{"id":"nvidia/nemotron-3-super-120b-a12b:free","object":"model","owned_by":"nvidia","context_length":32768,"free":true},{"id":"local","object":"model","owned_by":"dagestan","context_length":32768,"free":true}];
+const http = require('http');
+const HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Dagestan Codex</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0f1a;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation;overflow:hidden}header{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:.75rem;position:sticky;top:0;z-index:10;background:#0a0f1a}.logo{font-size:1.5rem}.title{font-size:1rem;background:linear-gradient(135deg,#22d3ee,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}.sub{margin-left:auto;font-size:.7rem;color:#64748b}.chat{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.75rem;height:calc(100vh - 120px)}.msg{max-width:85%;padding:.75rem 1rem;border-radius:1rem;font-size:.875rem;line-height:1.5}.user{align-self:flex-end;background:#38bdf8;color:#0f172a;border-bottom-right-radius:.25rem}.ai{align-self:flex-start;background:#1e293b;border-bottom-left-radius:.25rem}.bar{display:flex;gap:.5rem;padding:.75rem 1rem;border-top:1px solid rgba(255,255,255,.1);background:#0a0f1a}input{flex:1;background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:.75rem;padding:.6rem 1rem;color:#e2e8f0;font-size:.875rem;outline:none;-webkit-appearance:none}button{background:linear-gradient(135deg,#22d3ee,#8b5cf6);border:none;color:#fff;border-radius:.75rem;padding:.6rem 1.25rem;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}</style></head><body><header><span class="logo">\u{1F916}</span><span class="title">Dagestan Codex</span><span class="sub">AI Coding</span></header><div class="chat" id="M"></div><div class="bar"><input id="I" placeholder="Ask me to code anything..." enterkeyhint="send"><button id="B">Run</button></div><script>var M=document.getElementById("M"),I=document.getElementById("I"),B=document.getElementById("B");function A(r,t){var d=document.createElement("div");d.className="msg "+(r==="user"?"user":"ai");d.textContent=t;M.appendChild(d);M.scrollTop=M.scrollHeight}function S(){var t=I.value.trim();if(!t)return;A("user",t);I.value="";setTimeout(function(){A("ai","Codex is ready. Ask me to write, debug, or explain code.")},300)}B.onclick=S;I.addEventListener("keydown",function(e){if(e.key==="Enter")S()});A("ai","Welcome to Dagestan Codex! Ask me to write code in any language.")</script></body></html>';
+const http_proxy = require('http');
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+}
+
+function proxyChatCompletion(payload) {
+  return new Promise((resolve, reject) => {
+    const upstream = process.env.DAGESTAN_LOCAL_MODELS || 'http://127.0.0.1:18927';
+    const body = JSON.stringify(payload);
+    const u = new URL(upstream + '/v1/chat/completions');
+    const opts = {
+      method: 'POST',
+      hostname: u.hostname,
+      port: u.port || 80,
+      path: u.pathname,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    };
+    const r = http_proxy.request(opts, (resp) => {
+      const chunks = [];
+      resp.on('data', (c) => chunks.push(c));
+      resp.on('end', () => resolve({ status: resp.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+    });
+    r.on('error', reject);
+    r.write(body);
+    r.end();
+  });
+}
+
+function proxyChatStream(payload, res) {
+  const upstream = process.env.DAGESTAN_LOCAL_MODELS || 'http://127.0.0.1:18927';
+  const body = JSON.stringify({ ...payload, stream: true });
+  const u = new URL(upstream + '/v1/chat/completions');
+  const opts = {
+    method: 'POST',
+    hostname: u.hostname,
+    port: u.port || 80,
+    path: u.pathname,
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  };
+  const r = http_proxy.request(opts, (resp) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+    resp.pipe(res);
+  });
+  r.on('error', (e) => { try { res.end(); } catch {} });
+  r.write(body);
+  r.end();
+}
+
+async function handler(req, res) {
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  if (req.url === '/readyz') { res.writeHead(200); res.end('ok'); return; }
+  if (req.url === '/v1/models') {
+    res.writeHead(200, {'Content-Type':'application/json'});
+    return res.end(JSON.stringify({object:'list',data:FREE_MODELS}));
+  }
+  if (req.method === 'POST' && req.url === '/v1/chat/completions') {
+    const raw = await readBody(req);
+    let payload = {};
+    try { payload = JSON.parse(raw); } catch (e) { res.writeHead(400); return res.end(JSON.stringify({error:'invalid_json'})); }
+    if (payload.stream === true) return proxyChatStream(payload, res);
+    try {
+      const r = await proxyChatCompletion({ ...payload, stream: false });
+      res.writeHead(r.status, {'Content-Type':'application/json'});
+      return res.end(r.body);
+    } catch (e) {
+      res.writeHead(502, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({error:'upstream_unreachable', message: String(e.message || e)}));
+    }
+  }
+  res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache'});
+  res.end(HTML);
+}
+const s1 = http.createServer(handler);
+s1.listen(3000, '0.0.0.0', () => console.log('Codex Web UI on :3000'));
+const s2 = http.createServer(handler);
+s2.listen(18925, '0.0.0.0', () => console.log('Codex Web UI also on :18925'));
+process.on('uncaughtException', (e) => { console.error('Codex err:', e.message); });

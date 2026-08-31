@@ -1,0 +1,163 @@
+/*
+ * codex-skin.css — Dagestan skin for codex-web-local
+ *
+ * Inject this CSS into the codex-web-local WebView to transform the bare
+ * "Let's build" page into a polished, branded experience.
+ *
+ * Usage in Android: webView.evaluateJavascript(`
+ *   var s=document.createElement('style');
+ *   s.textContent=CSS_HERE;
+ *   document.head.appendChild(s);
+ * `, null);
+ */
+
+/* ── Root palette override ─────────────────────────────────────────────── */
+:root {
+  --bg-primary: #0a0f1a;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1a2332;
+  --bg-card: #141c2b;
+  --border: rgba(255, 255, 255, 0.08);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --accent: #22d3ee;
+  --accent-glow: rgba(34, 211, 238, 0.15);
+  --green: #34d399;
+  --green-glow: rgba(52, 211, 153, 0.2);
+}
+
+/* ── Body ──────────────────────────────────────────────────────────────── */
+body {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+nav, aside, [class*="sidebar"], [class*="Sidebar"] {
+  background: var(--bg-secondary) !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+/* New thread button */
+button[class*="new"], button[class*="New"],
+[class*="new-thread"], [class*="NewThread"] {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(139, 92, 246, 0.1)) !important;
+  border: 1px solid rgba(34, 211, 238, 0.3) !important;
+  color: var(--accent) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s !important;
+}
+
+button[class*="new"]:hover, button[class*="New"]:hover {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(139, 92, 246, 0.2)) !important;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.15) !important;
+}
+
+/* ── Main content area ─────────────────────────────────────────────────── */
+main, [class*="content"], [class*="Content"] {
+  background: var(--bg-primary) !important;
+}
+
+/* "Let's build" heading */
+h1, h2, [class*="heading"], [class*="Heading"] {
+  color: var(--text-primary) !important;
+}
+
+/* Center welcome text */
+[class*="welcome"], [class*="Welcome"], [class*="empty"], [class*="Empty"] {
+  text-align: center !important;
+}
+
+/* ── Input / Composer ──────────────────────────────────────────────────── */
+textarea, input[type="text"], [class*="composer"], [class*="Composer"],
+[class*="input"], [class*="Input"] {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 12px !important;
+  padding: 12px 16px !important;
+}
+
+textarea:focus, input[type="text"]:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-glow) !important;
+  outline: none !important;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+button {
+  transition: all 0.15s ease !important;
+}
+
+button:active {
+  transform: scale(0.97) !important;
+}
+
+/* Primary action buttons */
+button[class*="primary"], button[class*="Primary"],
+button[type="submit"] {
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 15px rgba(34, 211, 238, 0.25) !important;
+}
+
+button[class*="primary"]:hover, button[class*="Primary"]:hover {
+  box-shadow: 0 6px 25px rgba(34, 211, 238, 0.35) !important;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px !important;
+}
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25) !important;
+  border-radius: 999px !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45) !important;
+}
+
+/* ── Code blocks ───────────────────────────────────────────────────────── */
+pre, code {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+}
+
+/* ── Links ─────────────────────────────────────────────────────────────── */
+a {
+  color: var(--accent) !important;
+}
+a:hover {
+  text-decoration: underline !important;
+}
+
+/* ── Animations ────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+[class*="message"], [class*="Message"], [class*="chat"], [class*="Chat"] {
+  animation: fadeIn 0.2s ease-out !important;
+}
+
+/* ── Dagestan branding strip at top ────────────────────────────────────── */
+.dagestan-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #34d399, #22d3ee, #8b5cf6);
+  z-index: 9999;
+}

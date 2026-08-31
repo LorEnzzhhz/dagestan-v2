@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="Dagestan — every powerful free AI model in one beautiful chat, on Android and the web">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#020617"/>
+      <stop offset=".5" stop-color="#0a0f1a"/>
+      <stop offset="1" stop-color="#0c1a2b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset=".5" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <linearGradient id="orb" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- Soft grid -->
+  <g stroke="#1e293b" stroke-width="1" opacity=".35">
+    <path d="M0 100H1280M0 200H1280M0 300H1280M0 400H1280M0 500H1280"/>
+    <path d="M160 0V640M320 0V640M480 0V640M640 0V640M800 0V640M960 0V640M1120 0V640"/>
+  </g>
+
+  <!-- Glow behind the orb -->
+  <circle cx="1010" cy="320" r="280" fill="url(#glow)"/>
+
+  <!-- Orb HUD (matches the in-app OrbHUD component) -->
+  <g transform="translate(1010,320)">
+    <circle r="190" fill="#0f172a" stroke="url(#orb)" stroke-width="3" opacity=".9"/>
+    <circle r="160" fill="none" stroke="#22d3ee" stroke-width="1" opacity=".4"/>
+    <circle r="120" fill="none" stroke="#a78bfa" stroke-width="1" opacity=".35"/>
+    <circle r="80"  fill="none" stroke="#22d3ee" stroke-width="1" opacity=".55"/>
+    <circle r="40"  fill="url(#orb)" opacity=".9"/>
+    <circle r="14"  fill="#fff" opacity=".85"/>
+    <text text-anchor="middle" y="6" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#020617" font-weight="700">AI</text>
+  </g>
+
+  <!-- Title -->
+  <g font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">
+    <text x="80" y="170" font-size="92" font-weight="800" fill="url(#accent)">🏔 Dagestan</text>
+    <text x="80" y="240" font-size="34" font-weight="500" fill="#cbd5e1">Every powerful free AI model.</text>
+    <text x="80" y="282" font-size="34" font-weight="500" fill="#cbd5e1">One beautiful chat, on your phone.</text>
+
+    <!-- Badges row -->
+    <g transform="translate(80,330)">
+      <g>
+        <rect width="200" height="44" rx="22" fill="#0f172a" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="100" y="29" text-anchor="middle" font-size="18" font-weight="600" fill="#22d3ee">Android 7+ · 91 MB</text>
+      </g>
+      <g transform="translate(216,0)">
+        <rect width="220" height="44" rx="22" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+        <text x="110" y="29" text-anchor="middle" font-size="18" font-weight="600" fill="#38bdf8">React 19 · Vite 7</text>
+      </g>
+      <g transform="translate(452,0)">
+        <rect width="200" height="44" rx="22" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="100" y="29" text-anchor="middle" font-size="18" font-weight="600" fill="#a78bfa">18+ free models</text>
+      </g>
+    </g>
+
+    <!-- Server tags -->
+    <g transform="translate(80,400)" font-size="20" font-weight="600">
+      <g>
+        <rect width="280" height="50" rx="12" fill="#1e293b" stroke="#334155"/>
+        <circle cx="22" cy="25" r="6" fill="#4ade80"/>
+        <text x="42" y="32" fill="#e2e8f0">🤖  Codex CLI  ·  :18925</text>
+      </g>
+      <g transform="translate(296,0)">
+        <rect width="280" height="50" rx="12" fill="#1e293b" stroke="#334155"/>
+        <circle cx="22" cy="25" r="6" fill="#38bdf8"/>
+        <text x="42" y="32" fill="#e2e8f0">🕸  OpenClaw  ·  :18790</text>
+      </g>
+      <g transform="translate(0,62)">
+        <rect width="280" height="50" rx="12" fill="#1e293b" stroke="#334155"/>
+        <circle cx="22" cy="25" r="6" fill="#a78bfa"/>
+        <text x="42" y="32" fill="#e2e8f0">🌐  OpenCodex  ·  :10101</text>
+      </g>
+      <g transform="translate(296,62)">
+        <rect width="280" height="50" rx="12" fill="#1e293b" stroke="#334155"/>
+        <circle cx="22" cy="25" r="6" fill="#fbbf24"/>
+        <text x="42" y="32" fill="#e2e8f0">🧭  Hermes UI  ·  :8788</text>
+      </g>
+    </g>
+
+    <!-- Footer -->
+    <text x="80" y="585" font-size="20" font-weight="500" fill="#64748b">
+      github.com/LorEnzzhhz/dagestan  ·  MIT License  ·  No paywall · No ads · No telemetry
+    </text>
+  </g>
+</svg>

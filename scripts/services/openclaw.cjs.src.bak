@@ -1,0 +1,238 @@
+const http = require('http');
+const crypto = require('crypto');
+const GW_HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Dagestan Gateway</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0f1a;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation;overflow-x:hidden}.wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;text-align:center}.icon{font-size:3rem;margin-bottom:.5rem}.h1{font-size:1.5rem;font-weight:700;background:linear-gradient(135deg,#38bdf8,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sub{color:#94a3b8;margin-top:.5rem;font-size:.875rem}.card{margin-top:1.5rem;padding:1rem 1.5rem;border:1px solid rgba(255,255,255,.1);border-radius:.75rem;background:#1e293b;width:100%;max-width:320px}.row{display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;font-size:.8rem}.dot{width:8px;height:8px;border-radius:50%;display:inline-block}.green{background:#4ade80;box-shadow:0 0 6px #4ade80}.label{color:#94a3b8}.val{font-weight:600;font-family:monospace;font-size:.75rem}.clients{margin-top:1rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.08)}.clabel{font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;text-align:left}.citem{display:flex;align-items:center;gap:.5rem;padding:.3rem 0;font-size:.75rem;color:#94a3b8}.badge{padding:.1rem .4rem;border-radius:.25rem;font-size:.6rem;font-weight:600}.badge-gw{background:rgba(74,222,128,.15);color:#4ade80}.badge-ws{background:rgba(56,189,248,.15);color:#38bdf8}</style></head><body><div class="wrap"><div class="icon">\u{1F578}\u{FE0F}</div><div class="h1">Dagestan Gateway</div><div class="sub">WebSocket relay for device control</div><div class="card"><div class="row"><span class="label">Status</span><span><span class="dot green"></span> <span class="val">Running</span></span></div><div class="row"><span class="label">Port</span><span class="val">18790</span></div><div class="row"><span class="label">Protocol</span><span class="val">WS + HTTP</span></div><div class="clients"><div class="clabel">Connected</div><div class="citem"><span class="badge badge-gw">GATEWAY</span> Dagestan shell</div><div class="citem"><span class="badge badge-ws">WEBSOCKET</span> Control link active</div></div></div></div></body></html>';
+function handler(req, res) {
+  res.setHeader('X-Content-Type-Options','nosniff');
+  if (req.url === '/readyz') { res.writeHead(200); res.end('ok'); return; }
+  if (req.url === '/api/status') { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify({status:'running',port:18790,uptime:process.uptime()})); return; }
+  res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache'});
+  res.end(GW_HTML);
+}
+const http_proxy = require('http');
+
+const SESSIONS = new Map();
+let SESSION_COUNTER = 0;
+
+function newSessionId() { SESSION_COUNTER += 1; return 'sess_' + Date.now().toString(36) + '_' + SESSION_COUNTER; }
+
+function sendFrame(socket, payloadObj) {
+  const payload = Buffer.from(JSON.stringify(payloadObj), 'utf8');
+  // Single-frame, unmasked, text frame. Length fits in 7 bits for normal messages.
+  if (payload.length < 126) {
+    socket.write(Buffer.concat([Buffer.from([0x81, payload.length]), payload]));
+  } else if (payload.length < 65536) {
+    socket.write(Buffer.concat([Buffer.from([0x81, 126, (payload.length >> 8) & 0xff, payload.length & 0xff]), payload]));
+  } else {
+    const h = Buffer.alloc(10);
+    h[0] = 0x81; h[1] = 127;
+    const big = Buffer.alloc(8);
+    big.writeBigUInt64BE(BigInt(payload.length));
+    socket.write(Buffer.concat([h, big, payload]));
+  }
+}
+
+function proxyStreamToCallbacks(payload, onChunk, onDone) {
+  const upstream = process.env.DAGESTAN_LOCAL_MODELS || 'http://127.0.0.1:18927';
+  const body = JSON.stringify({ ...payload, stream: true });
+  const u = new URL(upstream + '/v1/chat/completions');
+  const r = http_proxy.request({
+    method: 'POST',
+    hostname: u.hostname, port: u.port || 80, path: u.pathname,
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  }, (resp) => {
+    if (resp.statusCode !== 200) { onDone(new Error('upstream ' + resp.statusCode)); return; }
+    let buf = '';
+    resp.on('data', (chunk) => {
+      buf += chunk.toString('utf8');
+      let idx;
+      while ((idx = buf.indexOf('\n')) !== -1) {
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') { onDone(null); return; }
+        try {
+          const evt = JSON.parse(data);
+          const delta = evt.choices && evt.choices[0] && evt.choices[0].delta;
+          const text = delta && (delta.content || delta.text || '');
+          if (text) onChunk(text);
+        } catch (e) { /* ignore parse errors */ }
+      }
+    });
+    resp.on('end', () => { onDone(null); });
+    resp.on('error', (e) => { onDone(e); });
+  });
+  r.on('error', (e) => { onDone(e); });
+  r.write(body); r.end();
+}
+
+function buildSnapshot() {
+  return {
+    sessions: Array.from(SESSIONS.values()).map(s => ({ id: s.id, title: s.title || 'session', createdAt: s.createdAt })),
+  };
+}
+
+function handleMethod(socket, msg, ping) {
+  const method = msg.method;
+  const id = msg.id;
+  const params = msg.params || {};
+
+  if (method === 'connect') {
+    return {
+      type: 'res', id, ok: true,
+      payload: {
+        type: 'hello-ok',
+        protocol: 4,
+        server: { version: '2026.2.21-2', connId: crypto.randomBytes(8).toString('hex') },
+        features: {
+          methods: ['sessions.list','sessions.send','agent.run','agent.wait','agent.abort','models.list','models.catalog'],
+          events: ['session.update','agent.progress','chat.chunk','agent.done'],
+        },
+        snapshot: buildSnapshot(),
+        auth: { role: 'operator', scopes: ['operator.read','operator.write'] },
+        policy: { maxPayload: 26214400, maxBufferedBytes: 52428800, tickIntervalMs: 15000 },
+      },
+    };
+  }
+
+  if (method === 'sessions.list') {
+    return { type: 'res', id, ok: true, payload: buildSnapshot() };
+  }
+
+  if (method === 'sessions.send') {
+    const sid = newSessionId();
+    const s = { id: sid, title: (params.message || params.text || 'chat').slice(0, 60), createdAt: Date.now(), messages: [] };
+    SESSIONS.set(sid, s);
+    // Echo a session.update event so the UI sees the new session.
+    setImmediate(() => sendFrame(socket, { type: 'event', event: 'session.update', payload: { session: s } }));
+    return { type: 'res', id, ok: true, payload: { sessionId: sid } };
+  }
+
+  if (method === 'agent.run') {
+    const sid = params.sessionId || (SESSIONS.size ? Array.from(SESSIONS.keys()).pop() : null);
+    const sess = sid ? SESSIONS.get(sid) : null;
+    const userText = params.message || params.text || params.prompt || (sess && sess.messages.length ? sess.messages[sess.messages.length - 1] : '') || '';
+    const messages = Array.isArray(params.messages) ? params.messages : [{ role: 'user', content: userText }];
+    const modelId = params.model || 'local';
+
+    // Fire-and-stream agent.progress + chat.chunk events.
+    setImmediate(() => {
+      sendFrame(socket, { type: 'event', event: 'agent.progress', payload: { sessionId: sid, state: 'running', model: modelId } });
+      if (sess) sess.messages.push(...messages);
+
+      const fullText = { value: '' };
+      proxyStreamToCallbacks(
+        { model: modelId, messages, max_tokens: 256, temperature: 0.7 },
+        (chunk) => {
+          fullText.value += chunk;
+          sendFrame(socket, { type: 'event', event: 'chat.chunk', payload: { sessionId: sid, delta: chunk, text: fullText.value } });
+        },
+        (err) => {
+          if (err) {
+            sendFrame(socket, { type: 'event', event: 'agent.progress', payload: { sessionId: sid, state: 'error', error: String(err.message || err) } });
+            sendFrame(socket, { type: 'res', id, ok: false, error: { message: String(err.message || err) } });
+            return;
+          }
+          if (sess) sess.messages.push({ role: 'assistant', content: fullText.value });
+          sendFrame(socket, { type: 'event', event: 'agent.progress', payload: { sessionId: sid, state: 'done' } });
+          sendFrame(socket, { type: 'event', event: 'agent.done', payload: { sessionId: sid, text: fullText.value } });
+          sendFrame(socket, { type: 'res', id, ok: true, payload: { sessionId: sid, text: fullText.value, runId: id } });
+        }
+      );
+    });
+    // Return immediately with a "started" response; final text comes via events.
+    return { type: 'res', id, ok: true, payload: { sessionId: sid, started: true, runId: id } };
+  }
+
+  if (method === 'agent.wait' || method === 'agent.abort') {
+    return { type: 'res', id, ok: true, payload: { status: 'noop' } };
+  }
+
+  if (method === 'models.list' || method === 'models.catalog') {
+    return { type: 'res', id, ok: true, payload: { models: [{ id: 'local', name: 'Local (node-llama-cpp)', provider: 'dagestan' }] } };
+  }
+
+  if (method === 'config.get' || method === 'config.schema') {
+    return { type: 'res', id, ok: true, payload: {} };
+  }
+
+  if (method === 'channels.list' || method === 'channels.status') {
+    return { type: 'res', id, ok: true, payload: { channels: [] } };
+  }
+
+  // Unknown method — report cleanly so the UI doesn't spin.
+  return { type: 'res', id, ok: false, error: { message: 'unknown_method: ' + method } };
+}
+
+function wsUpgrade(req, socket) {
+  const key = req.headers['sec-websocket-key'];
+  if (!key) { socket.destroy(); return; }
+  const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-5AB9D116841').digest('base64');
+  // Important: send ONLY the 101 Switching Protocols response. Do NOT push any
+  // frame after the handshake. Modern ws clients (ws@8.x) reject extra bytes
+  // appended to the upgrade response with "Invalid Sec-WebSocket-Accept header"
+  // because they confuse the handshake parser. The client sends `connect` as
+  // its first frame; we reply with `hello-ok` in handleMethod().
+  socket.write(
+    'HTTP/1.1 101 Switching Protocols\r\n' +
+    'Upgrade: websocket\r\n' +
+    'Connection: Upgrade\r\n' +
+    'Sec-WebSocket-Accept: ' + accept + '\r\n' +
+    '\r\n'
+  );
+  const ping = setInterval(() => { try { socket.write(Buffer.from([0x89, 0x00])); } catch(e) { clearInterval(ping); } }, 30000);
+
+  // Per-connection frame parser — handles single-frame text/binary from the client.
+  // CRITICAL: client frames are MASKED (RFC 6455 §5.3). Server frames are NOT.
+  let buf = Buffer.alloc(0);
+  socket.on('data', (data) => {
+    buf = Buffer.concat([buf, data]);
+    while (buf.length >= 2) {
+      const op = buf[0] & 0x0f;
+      const masked = (buf[1] & 0x80) !== 0;
+      let len = buf[1] & 0x7f;
+      let offset = 2;
+      if (len === 126) {
+        if (buf.length < 4) return;
+        len = buf.readUInt16BE(2);
+        offset = 4;
+      } else if (len === 127) {
+        if (buf.length < 10) return;
+        len = Number(buf.readBigUInt64BE(2));
+        offset = 10;
+      }
+      const maskBytes = masked ? 4 : 0;
+      const totalNeeded = offset + maskBytes + len;
+      if (buf.length < totalNeeded) return; // wait for more
+      let payload = buf.slice(offset + maskBytes, totalNeeded);
+      if (masked) {
+        const maskKey = buf.slice(offset, offset + 4);
+        const unmasked = Buffer.alloc(payload.length);
+        for (let i = 0; i < payload.length; i++) unmasked[i] = payload[i] ^ maskKey[i & 3];
+        payload = unmasked;
+      }
+      buf = buf.slice(totalNeeded);
+      try {
+        if (op === 0x08) { socket.end(); return; }
+        if (op === 0x09) { try { socket.write(Buffer.from([0x8a, 0x00])); } catch {} continue; }
+        if (op === 0x0a) continue;
+        if (op !== 0x01 && op !== 0x02) continue;
+        const msg = JSON.parse(payload.toString('utf8'));
+        if (msg.type !== 'req') continue;
+        const resp = handleMethod(socket, msg, ping);
+        sendFrame(socket, resp);
+      } catch (e) { console.error('[openclaw] frame err:', e.message); }
+    }
+  });
+  socket.on('error', () => { clearInterval(ping); });
+  socket.on('close', () => { clearInterval(ping); });
+}
+// Port 18790: Gateway with WebSocket
+const gw = http.createServer(handler);
+gw.on('upgrade', wsUpgrade);
+gw.listen(18790, '0.0.0.0', () => console.log('OpenClaw gateway on :18790'));
+// Port 19002: Control UI with WebSocket (same protocol)
+const ctrl = http.createServer(handler);
+ctrl.on('upgrade', wsUpgrade);
+ctrl.listen(19002, '0.0.0.0', () => console.log('Control UI on :19002'));
+process.on('uncaughtException', (e) => { console.error('OpenClaw err:', e.message); });
