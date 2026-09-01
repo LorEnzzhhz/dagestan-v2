@@ -38,6 +38,23 @@ does everything: downloads the Termux bootstrap, installs JDK 17 + Gradle,
 runs `gradle assembleDebug`, signs with the CI debug keystore and publishes
 the APK as an artifact / GitHub Release.
 
+## Bundled agent CLIs
+
+Besides the four servers (Codex Web UI, OpenClaw, OpenCodex, Hermes), the APK
+bundles two native agent CLIs via `scripts/bundle-packages.sh`:
+
+| Asset | Contents | Runs in |
+|---|---|---|
+| `packages/claude-code.tgz` | Claude Code linux-arm64 binary (`@anthropic-ai/claude-code`) | proot Debian container (glibc) |
+| `packages/cursor-agent.tgz` | Cursor `agent` CLI, best-effort from Cursor's CDN | proot Debian container (glibc) |
+
+On first launch `CodexServerManager.extractBundledAgents()` stages them under
+`$PREFIX/opt/claude-code` and `$PREFIX/opt/cursor` (Termux is bionic and cannot
+execute glibc binaries directly) and installs `bin/claude` / `bin/cursor-agent`
+wrappers that jump into the container. `public/dagestan-agent.sh` copies them
+into the proot Debian container (`/opt/...` + `/usr/local/bin` symlinks) the
+first time the device agent runs.
+
 ## Build locally
 
 Requirements: JDK 17, Android SDK (API 35), Gradle 8.11.1.

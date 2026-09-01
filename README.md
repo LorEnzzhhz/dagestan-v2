@@ -39,7 +39,8 @@ localStorage and never touch a server.**
 | 🧠 **Smart Model Picker** | Auto-categorises models by profession (coding, writing, math, reasoning, creative, translation). |
 | 🤖 **Multi-model voting** | Send the same prompt to 3 models, compare side-by-side, pick the best. |
 | 📲 **Device agent** | The AI can run shell commands in a sandboxed root-Linux container on your phone and preview websites in Chrome. |
-| 🪶 **~91 MB APK** | Self-contained — no Play Services, no Google account, no telemetry. |
+| 🤖 **Bundled agent CLIs** | Claude Code and Cursor Agent ship inside the APK and run in the proot Debian container — alongside Codex CLI and Hermes. |
+| 🪶 **~200 MB APK** | Self-contained — no Play Services, no Google account, no telemetry. |
 
 ---
 
@@ -59,6 +60,23 @@ shell:
 All four are **bundled inside the APK** (no network install required on first
 launch) and start via the on-screen "Start" buttons. They are also exposed to
 the Vite dashboard through `window.DagestanDroid.run()`.
+
+### The two bundled agent CLIs
+
+The APK also bundles two native agent CLIs that run inside the **proot Debian
+container** the device agent provisions (Termux itself is bionic and can only
+*stage* their glibc binaries):
+
+| CLI | Command in the container | Notes |
+|---|---|---|
+| 🟠 **Claude Code** | `claude` | Official `@anthropic-ai/claude-code` linux-arm64 build, bundled offline. Sign in once with `claude`. |
+| ⚫ **Cursor Agent** | `cursor-agent` | Cursor's official `agent` CLI (best-effort bundle; installs on-device when online if the CDN was unreachable at build time). |
+
+Extraction is automatic on first launch (`$PREFIX/opt/claude-code`,
+`$PREFIX/opt/cursor`). The device agent copies them into the container and
+symlinks them onto `PATH` — ask in the agent chat: *"run claude"* or
+*"run cursor-agent"*. The in-app terminal also gets `claude` / `cursor-agent`
+wrappers that jump into the container for you.
 
 ---
 

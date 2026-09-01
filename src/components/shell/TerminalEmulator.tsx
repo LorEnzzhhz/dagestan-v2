@@ -70,6 +70,8 @@ export function TerminalEmulator() {
         { type: "output", text: "  🟢 OpenClaw Gateway : Running on :18790" },
         { type: "output", text: "  🟢 OpenCodex Proxy  : Running on :10101" },
         { type: "output", text: "  🟡 Hermes Web UI    : Stopped" },
+        { type: "output", text: "  🟢 Claude Code CLI  : In Debian container" },
+        { type: "output", text: "  🟢 Cursor Agent     : In Debian container" },
         { type: "output", text: "  📡 Network          : Connected" },
         { type: "output", text: "  💾 Storage          : 2.1 GB / 8 GB used" },
       ]);
@@ -100,6 +102,8 @@ export function TerminalEmulator() {
         { type: "output", text: "  002  openclaw-gateway  18790   ✅ running" },
         { type: "output", text: "  003  opencodex-proxy   10101   ✅ running" },
         { type: "output", text: "  004  hermes-webui      8788    ⏹ stopped" },
+        { type: "output", text: "  005  claude-code       ─       ✅ in container" },
+        { type: "output", text: "  006  cursor-agent      ─       ✅ in container" },
       ]);
       return;
     }

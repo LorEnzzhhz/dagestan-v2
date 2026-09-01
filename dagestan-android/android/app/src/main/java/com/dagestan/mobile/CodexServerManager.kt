@@ -2576,6 +2576,141 @@ WEOF
         return isHermesInstalled()
     }
 
+    /**
+     * Restore the bundled agent CLIs (Claude Code + Cursor Agent) from APK assets.
+     *
+     * Both are native glibc binaries, so they cannot execute inside the bionic
+     * Termux prefix directly — the prefix only *stages* them under opt/. The
+     * device agent (public/dagestan-agent.sh) copies them into the proot Debian
+     * container it provisions, which is where they run. Wrapper scripts in
+     * prefix/bin jump into that container from the in-app terminal.
+     */
+    fun extractBundledAgents(onProgress: (String) -> Unit) {
+        extractBundledClaudeCode(onProgress)
+        extractBundledCursorAgent(onProgress)
+    }
+
+    /**
+     * Extract packages/claude-code.tgz -> prefix/opt/claude-code/ (claude binary
+     * + metadata) and install a prefix/bin/claude wrapper that execs it inside
+     * the proot Debian container.
+     */
+    private fun extractBundledClaudeCode(onProgress: (String) -> Unit) {
+        val hasClaude = context.assets.list("packages")?.contains("claude-code.tgz") == true
+        if (!hasClaude) return
+
+        val paths = BootstrapInstaller.getPaths(context)
+        val prefix = paths.prefixDir
+        val binary = File(prefix, "opt/claude-code/claude")
+        if (!binary.exists()) {
+            onProgress("Restoring Claude Code from bundled package...")
+            val tgz = File(prefix, "tmp/_bundled_claude.tgz")
+            tgz.parentFile?.mkdirs()
+            try {
+                context.assets.open("packages/claude-code.tgz").use { input ->
+                    tgz.outputStream().use { output -> input.copyTo(output) }
+                }
+                val extractCmd = """
+                    mkdir -p "$prefix/opt/claude-code" && cd "$prefix/opt/claude-code" &&
+                    tar xzf "${tgz.absolutePath}" 2>&1 &&
+                    ( chmod 755 claude 2>/dev/null || true ) &&
+                    rm -f "${tgz.absolutePath}" &&
+                    echo "Claude Code restored from bundle"
+                """.trimIndent()
+                runInPrefix(extractCmd) { onProgress(it) }
+            } catch (e: Exception) {
+                Log.w(TAG, "Bundled Claude Code extraction failed: ${e.message}")
+            }
+        }
+
+        val wrapper = File(prefix, "bin/claude")
+        if (binary.exists() && !wrapper.exists()) {
+            wrapper.parentFile?.mkdirs()
+            try {
+                wrapper.writeText(
+                    """
+                    |#!/data/data/com.dagestan.mobile/files/usr/bin/sh
+                    |# Claude Code (bundled) — runs inside the proot Debian container.
+                    |if command -v proot-distro >/dev/null 2>&1 &&
+                    |   [ -x "$(dirname "$0")/../var/lib/proot-distro/installed-rootfs/debian/opt/claude-code/claude" ]; then
+                    |  exec proot-distro login debian -- /opt/claude-code/claude "$@"
+                    |fi
+                    |echo "Claude Code runs inside the proot Debian container, which is not ready yet." >&2
+                    |echo "One-time setup: enable the device agent (Skills -> Device agent), or run:" >&2
+                    |echo "  pkg install proot-distro && proot-distro install debian" >&2
+                    |echo "Then start it from the agent chat with: claude" >&2
+                    |exit 127
+                    """.trimMargin().trim() + "\n"
+                )
+                wrapper.setExecutable(true, false)
+            } catch (e: Exception) {
+                Log.w(TAG, "Claude Code wrapper install failed: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Extract packages/cursor-agent.tgz -> prefix/opt/cursor/agent and install a
+     * prefix/bin/cursor-agent wrapper that execs it inside the proot Debian
+     * container. The tarball layout varies by Cursor release, so we locate the
+     * `agent` binary with find instead of assuming a path.
+     */
+    private fun extractBundledCursorAgent(onProgress: (String) -> Unit) {
+        val hasCursor = context.assets.list("packages")?.contains("cursor-agent.tgz") == true
+        if (!hasCursor) return
+
+        val paths = BootstrapInstaller.getPaths(context)
+        val prefix = paths.prefixDir
+        val binary = File(prefix, "opt/cursor/agent")
+        if (!binary.exists()) {
+            onProgress("Restoring Cursor Agent from bundled package...")
+            val tgz = File(prefix, "tmp/_bundled_cursor.tgz")
+            tgz.parentFile?.mkdirs()
+            try {
+                context.assets.open("packages/cursor-agent.tgz").use { input ->
+                    tgz.outputStream().use { output -> input.copyTo(output) }
+                }
+                val extractCmd = """
+                    mkdir -p "$prefix/opt/cursor" && cd "$prefix/opt/cursor" &&
+                    tar xzf "${tgz.absolutePath}" 2>&1 &&
+                    BIN=$(find . -maxdepth 3 -type f \( -name agent -o -name cursor-agent \) | head -1) &&
+                    [ "${'$'}BIN" = "./agent" ] || mv "${'$'}BIN" "$prefix/opt/cursor/agent" &&
+                    ( chmod 755 "$prefix/opt/cursor/agent" 2>/dev/null || true ) &&
+                    rm -f "${tgz.absolutePath}" &&
+                    echo "Cursor Agent restored from bundle"
+                """.trimIndent()
+                runInPrefix(extractCmd) { onProgress(it) }
+            } catch (e: Exception) {
+                Log.w(TAG, "Bundled Cursor Agent extraction failed: ${e.message}")
+            }
+        }
+
+        val wrapper = File(prefix, "bin/cursor-agent")
+        if (binary.exists() && !wrapper.exists()) {
+            wrapper.parentFile?.mkdirs()
+            try {
+                wrapper.writeText(
+                    """
+                    |#!/data/data/com.dagestan.mobile/files/usr/bin/sh
+                    |# Cursor Agent (bundled) — runs inside the proot Debian container.
+                    |if command -v proot-distro >/dev/null 2>&1 &&
+                    |   [ -x "$(dirname "$0")/../var/lib/proot-distro/installed-rootfs/debian/opt/cursor/agent" ]; then
+                    |  exec proot-distro login debian -- /opt/cursor/agent "$@"
+                    |fi
+                    |echo "Cursor Agent runs inside the proot Debian container, which is not ready yet." >&2
+                    |echo "One-time setup: enable the device agent (Skills -> Device agent), or run:" >&2
+                    |echo "  pkg install proot-distro && proot-distro install debian" >&2
+                    |echo "Then start it from the agent chat with: cursor-agent" >&2
+                    |exit 127
+                    """.trimMargin().trim() + "\n"
+                )
+                wrapper.setExecutable(true, false)
+            } catch (e: Exception) {
+                Log.w(TAG, "Cursor Agent wrapper install failed: ${e.message}")
+            }
+        }
+    }
+
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
