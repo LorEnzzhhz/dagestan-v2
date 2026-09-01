@@ -135,6 +135,12 @@ export default defineConfig({
     // (matches the local-models server's LOCAL_MODELS_LAN opt-in).
     host: process.env.VITE_LAN === "1" ? true : "127.0.0.1",
     port: 5173,
+    // Accept any Host header. The dev server is routinely reached through
+    // sandbox/preview proxies and tunnels whose Host header is not
+    // localhost; Vite 7 otherwise rejects those with a 403 "Blocked
+    // request" error page. Dev-only — production APK/web builds are
+    // unaffected.
+    allowedHosts: true,
     // Keep HMR on, but disable full-screen error overlay
     hmr: {
       overlay: false,
