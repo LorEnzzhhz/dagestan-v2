@@ -66,7 +66,10 @@ interface ServiceInfo {
 }
 
 const SERVICES: ServiceInfo[] = [
-  { name: "Codex Web UI", icon: Globe, port: 3000, href: "/chat", reachable: false },
+  // Port 18925 = CodexServerManager.SERVER_PORT (the desktop dev runner
+  // uses 3000, but this page also runs inside the APK WebView where only
+  // the managed server exists).
+  { name: "Codex Web UI", icon: Globe, port: 18925, href: "/chat", reachable: false },
   { name: "OpenClaw Gateway", icon: Server, port: 18790, href: "http://127.0.0.1:18790", reachable: false },
   { name: "OpenCodex Proxy", icon: Hammer, port: 10101, href: "http://127.0.0.1:10101", reachable: false },
   { name: "Hermes Web UI", icon: Compass, port: 8788, href: "http://127.0.0.1:8788", reachable: false },
@@ -76,10 +79,31 @@ function useServicesStatus(): ServiceInfo[] {
   const [services, setServices] = useState<ServiceInfo[]>(
     SERVICES.map((s) => ({ ...s, reachable: false })),
   );
+  const droid = getDroid();
   const probe = useCallback(async () => {
+    if (droid) {
+      // Inside the APK the WebView origin is not 127.0.0.1, so cross-origin
+      // fetch probes are blocked by CORS. Ask the prefix shell instead —
+      // lsof may be missing, so fall back to a /proc socket-table scan.
+      const next = SERVICES.map((s) => {
+        let reachable = false;
+        try {
+          const raw = droid.run(
+            `lsof -ti:${s.port} 2>/dev/null | head -1 || grep -c ":${s.port.toString(16).toUpperCase().padStart(4, "0")} " /proc/net/tcp 2>/dev/null || echo ''`,
+          );
+          reachable = raw.trim() !== "" && raw.trim() !== "0";
+        } catch {
+          reachable = false;
+        }
+        return { ...s, reachable };
+      });
+      setServices(next);
+      return;
+    }
     const next = await Promise.all(
       SERVICES.map(async (s) => {
-        const control = s.port === 3000 ? 13000 : s.port + 1000;
+        // Desktop dev runners expose /healthz on primary+1000 (codex-web: 4000).
+        const control = s.port === 18925 ? 4000 : s.port + 1000;
         let reachable = false;
         try {
           const r = await fetch(`http://127.0.0.1:${control}/healthz`, {
@@ -93,7 +117,7 @@ function useServicesStatus(): ServiceInfo[] {
       }),
     );
     setServices(next);
-  }, []);
+  }, [droid]);
   useEffect(() => {
     // Defer the initial probe to avoid a cascading render inside the effect body.
     const initial = window.setTimeout(() => { void probe(); }, 0);

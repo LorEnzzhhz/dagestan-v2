@@ -28,7 +28,7 @@ function useSystemStatus() {
       const disk = droid.run("df -h / | awk 'NR==2{print $5}' 2>/dev/null || echo '—'");
       const net = droid.run("ip route get 1.1.1.1 2>/dev/null | awk '{print $7}' | head -1 || echo 'offline'");
       const svcs = droid.run(
-        "count=0; for p in 3000 10101 8788 18790; do curl -s -o /dev/null -w '' http://localhost:$p 2>/dev/null && count=$((count+1)); done; echo \"$count/4\"",
+        "count=0; for p in 18925 10101 8788 18790; do curl -s -o /dev/null -w '' http://localhost:$p 2>/dev/null && count=$((count+1)); done; echo \"$count/4\"",
       );
       const up = droid.run("uptime -p 2>/dev/null || uptime | awk -F'up ' '{print $2}' | awk -F',' '{print $1}'");
       setStatus({

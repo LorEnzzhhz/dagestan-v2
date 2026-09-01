@@ -23,13 +23,21 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
+import { getDroid, parseServerState, type DroidBridge } from "@/lib/bridge";
 
 // -----------------------------------------------------------------------------
-// Service registry — each entry points to the control port of our
-// scripts/services/runner.mjs instances. The runner owns the primary listener
-// and exposes /healthz, POST /shutdown, POST /restart.
+// Service registry — two modes.
+//
+// On-device (inside the APK): the four servers are owned by the native
+// CodexServerManager and controlled through the DagestanDroid bridge
+// (serverState / startServer / stopServer). Ports are the manager's
+// constants: codex-web-local 18925, OpenClaw gateway 18790 (Control UI
+// 19002), OpenCodex 10101, Hermes 8788.
+//
+// Desktop dev: the scripts/services/runner.mjs instances own the primary
+// listener and expose /healthz + POST /shutdown,/restart on control ports.
 // -----------------------------------------------------------------------------
-type ServiceStatus = "unknown" | "stopped" | "starting" | "running" | "error";
+type ServiceStatus = "unknown" | "stopped" | "starting" | "stopping" | "running" | "error";
 
 interface ServiceDef {
   id: string;
@@ -40,11 +48,11 @@ interface ServiceDef {
   color: string;
   /** Port the primary service listens on (where users open the UI). */
   primary: number;
-  /** Port the control server listens on (POST /shutdown etc). */
+  /** Port the control server listens on (POST /shutdown etc). Desktop only. */
   control: number;
 }
 
-const SERVICES: ServiceDef[] = [
+const DESKTOP_SERVICES: ServiceDef[] = [
   {
     id: "codex-web",
     name: "Codex Web UI",
@@ -87,6 +95,50 @@ const SERVICES: ServiceDef[] = [
   },
 ];
 
+// On-device ids must match DroidBridge.SERVER_IDS in DroidBridge.kt.
+const DEVICE_SERVICES: ServiceDef[] = [
+  {
+    id: "codex",
+    name: "Codex Web UI",
+    tagline: "AI coding assistant web dashboard",
+    description: "codex-web-local, managed by the native server manager on 127.0.0.1:18925.",
+    icon: Bot,
+    color: "text-emerald-400",
+    primary: 18925,
+    control: 0,
+  },
+  {
+    id: "openclaw",
+    name: "OpenClaw Gateway",
+    tagline: "WebSocket relay for device control",
+    description: "Gateway on 18790 plus its Control UI on 19002, managed natively.",
+    icon: Globe,
+    color: "text-sky-400",
+    primary: 18790,
+    control: 0,
+  },
+  {
+    id: "opencodex",
+    name: "OpenCodex Proxy",
+    tagline: "Universal LLM API proxy",
+    description: "ocx proxy + dashboard on 10101, managed natively.",
+    icon: Hammer,
+    color: "text-violet-400",
+    primary: 10101,
+    control: 0,
+  },
+  {
+    id: "hermes",
+    name: "Hermes Web UI",
+    tagline: "Built-in chat interface",
+    description: "hermes-webui on 8788 (HERMES_WEBUI_PORT), managed natively.",
+    icon: Compass,
+    color: "text-amber-400",
+    primary: 8788,
+    control: 0,
+  },
+];
+
 interface HealthResponse {
   ok: boolean;
   name: string;
@@ -118,11 +170,66 @@ async function postControl(control: number, action: "shutdown" | "restart"): Pro
   }
 }
 
+/** Device-mode state polled from the native server manager via the bridge. */
+interface DeviceServiceState {
+  state: ServiceStatus;
+  running: boolean;
+  port: number;
+  error: string | null;
+}
+
 export default function Services() {
+  const [droid] = useState<DroidBridge | null>(() => getDroid());
+  const onDevice =
+    !!droid &&
+    typeof droid.serverState === "function" &&
+    typeof droid.startServer === "function" &&
+    typeof droid.stopServer === "function";
+
+  const SERVICES = onDevice ? DEVICE_SERVICES : DESKTOP_SERVICES;
+
   const [statuses, setStatuses] = useState<Record<string, ServiceStatus>>({});
+  const [deviceStates, setDeviceStates] = useState<Record<string, DeviceServiceState>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    if (onDevice && droid) {
+      const nextStates: Record<string, DeviceServiceState> = {};
+      const nextStatuses: Record<string, ServiceStatus> = {};
+      for (const s of DEVICE_SERVICES) {
+        try {
+          const parsed = parseServerState(droid.serverState!(s.id));
+          if (parsed) {
+            const status: ServiceStatus =
+              parsed.state === "running" || parsed.running
+                ? "running"
+                : parsed.state === "starting"
+                  ? "starting"
+                  : parsed.state === "stopping"
+                    ? "stopping"
+                    : parsed.state === "error"
+                      ? "error"
+                      : "stopped";
+            nextStates[s.id] = {
+              state: status,
+              running: parsed.running,
+              port: parsed.port || s.primary,
+              error: parsed.error,
+            };
+            nextStatuses[s.id] = status;
+            continue;
+          }
+        } catch {
+          // fall through to stopped
+        }
+        nextStates[s.id] = { state: "stopped", running: false, port: s.primary, error: null };
+        nextStatuses[s.id] = "stopped";
+      }
+      setDeviceStates(nextStates);
+      setStatuses(nextStatuses);
+      return;
+    }
+
     const next: Record<string, ServiceStatus> = {};
     await Promise.all(
       SERVICES.map(async (s) => {
@@ -131,7 +238,7 @@ export default function Services() {
       }),
     );
     setStatuses(next);
-  }, []);
+  }, [onDevice, droid, SERVICES]);
 
   useEffect(() => {
     const id = setInterval(refresh, 5_000);
@@ -142,22 +249,53 @@ export default function Services() {
     };
   }, [refresh]);
 
-  const handleStop = useCallback(async (s: ServiceDef) => {
-    setBusy(s.id);
-    setStatuses((prev) => ({ ...prev, [s.id]: "starting" }));
-    await postControl(s.control, "shutdown");
-    setBusy(null);
-    setTimeout(refresh, 500);
-  }, [refresh]);
+  const handleStop = useCallback(
+    async (s: ServiceDef) => {
+      setBusy(s.id);
+      if (onDevice && droid?.stopServer) {
+        setStatuses((prev) => ({ ...prev, [s.id]: "stopping" }));
+        try {
+          droid.stopServer(s.id);
+        } catch {
+          // bridge error — refresh will reflect reality
+        }
+        setTimeout(refresh, 800);
+      } else {
+        setStatuses((prev) => ({ ...prev, [s.id]: "stopping" }));
+        await postControl(s.control, "shutdown");
+        setTimeout(refresh, 500);
+      }
+      setBusy(null);
+    },
+    [onDevice, droid, refresh],
+  );
 
-  const handleStart = useCallback(async (s: ServiceDef) => {
-    // We can't start a service from the browser (it requires node on the host).
-    // Instead, copy a one-liner the user can run.
-    void navigator.clipboard?.writeText(
-      `node scripts/services/runner.mjs scripts/services/${s.id === "codex-web" ? "codex" : s.id === "openclaw" ? "openclaw" : s.id === "opencodex" ? "opencodex" : "hermes"}.cjs.src ${s.primary} ${s.id}`,
-    ).catch(() => undefined);
-    setStatuses((prev) => ({ ...prev, [s.id]: "unknown" }));
-  }, []);
+  const handleStart = useCallback(
+    async (s: ServiceDef) => {
+      setBusy(s.id);
+      if (onDevice && droid?.startServer) {
+        setStatuses((prev) => ({ ...prev, [s.id]: "starting" }));
+        try {
+          droid.startServer(s.id);
+        } catch {
+          // bridge error — refresh will reflect reality
+        }
+        setTimeout(refresh, 800);
+      } else {
+        // Desktop: we can't start a service from the browser (it requires
+        // node on the host). Instead, copy a one-liner the user can run.
+        const blob = s.id === "codex-web" ? "codex" : s.id;
+        void navigator.clipboard
+          ?.writeText(
+            `node scripts/services/runner.mjs scripts/services/${blob}.cjs.src ${s.primary} ${s.id}`,
+          )
+          .catch(() => undefined);
+        setStatuses((prev) => ({ ...prev, [s.id]: "unknown" }));
+      }
+      setBusy(null);
+    },
+    [onDevice, droid, refresh],
+  );
 
   const runningCount = Object.values(statuses).filter((s) => s === "running").length;
 
@@ -170,8 +308,9 @@ export default function Services() {
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">Services</h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Browser-side status for the four local services that ship with Dagestan.
-            Start/stop is wired to the control endpoint exposed by each runner.
+            {onDevice
+              ? "The four local servers managed by the Dagestan server manager. Start/stop talks directly to the native process owner."
+              : "Browser-side status for the four local services that ship with Dagestan. Start/stop is wired to the control endpoint exposed by each runner."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -191,21 +330,33 @@ export default function Services() {
         </div>
       </header>
 
-      <Alert className="border-sky-400/30 bg-sky-400/5">
-        <Cpu className="size-4 text-sky-500" />
-        <AlertTitle className="text-sm">Bring up all services</AlertTitle>
-        <AlertDescription className="text-xs">
-          Run{" "}
-          <code className="rounded bg-background/60 px-1 py-0.5 font-mono">
-            bash scripts/services/start-all.sh
-          </code>{" "}
-          from the repo root to start every service at once. Stop them with{" "}
-          <code className="rounded bg-background/60 px-1 py-0.5 font-mono">
-            bash scripts/services/stop-all.sh
-          </code>
-          .
-        </AlertDescription>
-      </Alert>
+      {onDevice ? (
+        <Alert className="border-sky-400/30 bg-sky-400/5">
+          <Cpu className="size-4 text-sky-500" />
+          <AlertTitle className="text-sm">On-device servers</AlertTitle>
+          <AlertDescription className="text-xs">
+            Start and stop are wired to the native <code className="font-mono">CodexServerManager</code>{" "}
+            through the DagestanDroid bridge. Each server restarts cleanly — stale port occupants
+            are killed automatically before a new instance binds.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert className="border-sky-400/30 bg-sky-400/5">
+          <Cpu className="size-4 text-sky-500" />
+          <AlertTitle className="text-sm">Bring up all services</AlertTitle>
+          <AlertDescription className="text-xs">
+            Run{" "}
+            <code className="rounded bg-background/60 px-1 py-0.5 font-mono">
+              bash scripts/services/start-all.sh
+            </code>{" "}
+            from the repo root to start every service at once. Stop them with{" "}
+            <code className="rounded bg-background/60 px-1 py-0.5 font-mono">
+              bash scripts/services/stop-all.sh
+            </code>
+            .
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {SERVICES.map((s, i) => (
@@ -215,6 +366,7 @@ export default function Services() {
             index={i}
             status={statuses[s.id] ?? "unknown"}
             busy={busy === s.id}
+            error={deviceStates[s.id]?.error ?? null}
             onStop={() => void handleStop(s)}
             onStart={() => void handleStart(s)}
           />
@@ -229,6 +381,7 @@ function ServiceCard({
   index,
   status,
   busy,
+  error,
   onStop,
   onStart,
 }: {
@@ -236,12 +389,13 @@ function ServiceCard({
   index: number;
   status: ServiceStatus;
   busy: boolean;
+  error: string | null;
   onStop: () => void;
   onStart: () => void;
 }) {
   const Icon = service.icon;
   const isRunning = status === "running";
-  const isStarting = status === "starting";
+  const isTransitioning = status === "starting" || status === "stopping";
 
   return (
     <motion.div
@@ -253,7 +407,9 @@ function ServiceCard({
         className={`border transition-colors ${
           isRunning
             ? "border-primary/40 shadow-[0_0_20px_-8px] shadow-primary/20"
-            : "border-border/70"
+            : status === "error"
+              ? "border-destructive/40"
+              : "border-border/70"
         }`}
       >
         <CardHeader className="pb-2">
@@ -278,46 +434,68 @@ function ServiceCard({
                 className={
                   isRunning
                     ? "border-emerald-400/30 text-emerald-600 dark:text-emerald-300"
-                    : isStarting
-                      ? "border-amber-400/30 text-amber-600 dark:text-amber-300"
-                      : "border-border/60 text-muted-foreground"
+                    : status === "error"
+                      ? "border-destructive/40 text-destructive"
+                      : isTransitioning
+                        ? "border-amber-400/30 text-amber-600 dark:text-amber-300"
+                        : "border-border/60 text-muted-foreground"
                 }
               >
-                {isStarting ? "transitioning…" : isRunning ? "running" : "stopped"}
+                {status === "starting"
+                  ? "starting…"
+                  : status === "stopping"
+                    ? "stopping…"
+                    : isRunning
+                      ? "running"
+                      : status === "error"
+                        ? "error"
+                        : "stopped"}
               </Badge>
             </div>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-[11px] leading-snug text-muted-foreground">{service.description}</p>
+          {error ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1 text-[10px] leading-snug text-destructive">
+              {error}
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
             <Badge variant="outline" className="font-mono">
               :{service.primary}
             </Badge>
             <span>primary</span>
-            <Badge variant="outline" className="font-mono">
-              :{service.control}
-            </Badge>
-            <span>control</span>
-            <HardDrive className="ml-auto size-3" />
-            <span className="font-mono">scripts/services/{service.id}.cjs.src</span>
+            {service.control > 0 ? (
+              <>
+                <Badge variant="outline" className="font-mono">
+                  :{service.control}
+                </Badge>
+                <span>control</span>
+              </>
+            ) : (
+              <>
+                <HardDrive className="ml-0.5 size-3" />
+                <span className="font-mono">native manager</span>
+              </>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant={isRunning ? "destructive" : "default"}
               className="h-8 gap-1.5"
-              disabled={busy || (!isRunning && isStarting)}
+              disabled={busy || isTransitioning}
               onClick={isRunning ? onStop : onStart}
             >
-              {busy ? (
+              {busy || isTransitioning ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : isRunning ? (
                 <Square className="size-3.5" />
               ) : (
                 <Play className="size-3.5" />
               )}
-              {isRunning ? "Stop" : busy ? "Working…" : "Copy start cmd"}
+              {isRunning ? "Stop" : isTransitioning ? "Working…" : "Start"}
             </Button>
             <Button
               size="sm"

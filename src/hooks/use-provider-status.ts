@@ -11,7 +11,9 @@ interface ServiceStatus {
 }
 
 const SERVICES = [
-  { name: "Codex CLI", port: 3000 },
+  // 18925 = CodexServerManager.SERVER_PORT (codex-web-local). The old value
+  // here (3000) is the desktop dev-runner port, which never exists on-device.
+  { name: "Codex CLI", port: 18925 },
   { name: "OpenClaw Gateway", port: 18790 },
   { name: "OpenCodex Proxy", port: 10101 },
   { name: "Hermes Web UI", port: 8788 },
@@ -31,10 +33,14 @@ function fetchServiceStatuses(): ServiceStatus[] {
 
   return SERVICES.map((s) => {
     try {
+      // lsof is often missing inside proot — fall back to the
+      // /proc/net/tcp socket table (port in uppercase hex). The fallback
+      // proves a listener exists but not its PID, so PID/CPU/MEM stay "—".
       const pidRaw = droid.run(
-        `lsof -ti:${s.port} 2>/dev/null | head -1 || echo ""`,
+        `lsof -ti:${s.port} 2>/dev/null | head -1 || grep -c ":${s.port.toString(16).toUpperCase().padStart(4, "0")} " /proc/net/tcp 2>/dev/null || echo ""`,
       );
-      const pid = pidRaw.trim();
+      let pid = pidRaw.trim();
+      if (pid === "0") pid = "";
       if (!pid) {
         return { ...s, running: false, pid: null, cpu: "—", mem: "—" };
       }

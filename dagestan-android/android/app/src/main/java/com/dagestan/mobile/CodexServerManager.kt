@@ -1492,6 +1492,11 @@ WEOF
         openCodexLastError = null
         synchronized(openCodexOutput) { openCodexOutput.clear() }
 
+        // Free the port first. If a stale proxy occupies 10101, `ocx start
+        // --port 10101` refuses to bind (an explicit --port never hops to a
+        // free one) and waitForOpenCodex() times out.
+        killPrefixProcesses("--port $OPENCODEX_PORT", "opencodex")
+
         val paths = BootstrapInstaller.getPaths(context)
         val env = buildEnvironment(paths).toMutableMap()
         env["OPENCODEX_BUN_PATH"] = "${paths.prefixDir}/bin/bun"
@@ -1834,7 +1839,9 @@ WEOF
         runInPrefix(pipCmd, onOutput = { onProgress(it) })
     }
 
-    /** Start the Hermes WebUI server (listens on 127.0.0.1:[HERMES_PORT]). */
+    /**
+     * Start the Hermes WebUI server (listens on 127.0.0.1:[HERMES_PORT]).
+     */
     fun startHermesServer(): Boolean {
         if (isHermesRunning) return true
         if (!isHermesInstalled()) {
@@ -1844,6 +1851,11 @@ WEOF
 
         hermesLastError = null
         synchronized(hermesOutput) { hermesOutput.clear() }
+
+        // Free the port first: a stale Hermes (which receives its port via
+        // the HERMES_WEBUI_PORT env var) makes server.py die with "Address
+        // already in use" — it never retries.
+        killPrefixProcesses("HERMES_WEBUI_PORT=$HERMES_PORT", "hermes")
 
         val paths = BootstrapInstaller.getPaths(context)
         // Ensure Python pip dependencies are installed.
@@ -1861,7 +1873,15 @@ WEOF
                 runInPrefix("${paths.prefixDir}/bin/python3 -m pip install pyyaml 2>&1 || true")
             }
         }
-        val env = buildEnvironment(paths)
+        val env = buildEnvironment(paths).toMutableMap()
+        // hermes-webui reads its HTTP port exclusively from the
+        // HERMES_WEBUI_PORT env var (api/config.py: PORT =
+        // int(os.getenv("HERMES_WEBUI_PORT", "8787"))). Upstream defaults
+        // to 8787 while this app probes and exposes [HERMES_PORT] (8788) —
+        // without this the server binds one port below and
+        // startHermesServer always reports "did not become ready in 20s"
+        // even though the UI is actually up.
+        env["HERMES_WEBUI_PORT"] = HERMES_PORT.toString()
         val shell = "${paths.prefixDir}/bin/sh"
         // PyYAML must be importable; sed-patching profiles.py to swallow
         // the ImportError just turns a clear crash into a silent config
@@ -1947,6 +1967,36 @@ WEOF
         } catch (_: IllegalThreadStateException) {
             true
         }
+    }
+
+    /**
+     * Kill any process inside the prefix whose command line or environment
+     * matches [pattern]. Uses a /proc scan because fuser/lsof are often
+     * missing inside proot (same technique as startOpenClawGateway), and
+     * skips our own shell so the scan can't kill itself. Needed before
+     * starts because a stale occupant makes the new server die with
+     * "Address already in use" (Hermes) or fail to bind its expected port
+     * (OpenCodex).
+     */
+    private fun killPrefixProcesses(pattern: String, label: String) {
+        runInPrefix(
+            """
+            for pid in ${'$'}(ls /proc 2>/dev/null | grep '^[0-9]'); do
+                [ "${'$'}pid" = "$$" ] && continue
+                [ "${'$'}pid" = "${'$'}PPID" ] && continue
+                hit=""
+                if cat /proc/${'$'}pid/cmdline 2>/dev/null | tr '\0' ' ' | grep -q -- "$pattern" 2>/dev/null; then
+                    hit=1
+                elif tr '\0' '\n' < /proc/${'$'}pid/environ 2>/dev/null | grep -q -- "$pattern"; then
+                    hit=1
+                fi
+                if [ "${'$'}hit" = "1" ]; then
+                    kill -9 ${'$'}pid 2>/dev/null
+                    echo "killed stale $label pid ${'$'}pid"
+                fi
+            done
+            """.trimIndent()
+        ) { Log.d(TAG, "[kill-stale] $it") }
     }
 
     /** Spawn a long-running prefix process with log streaming. */
@@ -2426,31 +2476,47 @@ WEOF
 
     /** Stop the auxiliary OpenCode + Hermes servers. */
     fun stopAuxServers() {
-        openCodexProcess?.destroy()
+        // destroy() alone leaves Bun/Python children running inside proot;
+        // mirror stopOpenCodex()/stopHermes() with a delayed force-kill.
+        listOf(openCodexProcess, hermesProcess).forEach { proc ->
+            proc?.let {
+                try {
+                    it.destroy()
+                    Thread({ Thread.sleep(3000); try { it.destroyForcibly() } catch (_: Exception) {} }).start()
+                    it.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+                } catch (_: Exception) { }
+            }
+        }
         openCodexProcess = null
-        hermesProcess?.destroy()
         hermesProcess = null
     }
 
     fun stopServer() {
-        val proc = serverProcess ?: return
+        // NOTE: no early return here. Even when the web server process
+        // handle is already gone (crashed, or never started), the aux
+        // servers and the CONNECT proxy may still be alive — skipping
+        // their cleanup leaked them holding 18790/10101/8788/18926, and
+        // the next start then failed to bind those ports.
+        val proc = serverProcess
         serverProcess = null
 
-        try {
-            proc.destroy()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error destroying server process: ${e.message}")
+        if (proc != null) {
+            try {
+                proc.destroy()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error destroying server process: ${e.message}")
+            }
+
+            // Wait max 5 s; force-kill if stuck. Never block forever.
+            try {
+                Thread({ Thread.sleep(5000); try { proc.destroyForcibly() } catch (_: Exception) {} }).start()
+                proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
         }
 
-        // Wait max 5 s; force-kill if stuck. Never block forever.
-        try {
-            Thread({ Thread.sleep(5000); try { proc.destroyForcibly() } catch (_: Exception) {} }).start()
-            proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-        }
-
-        stopOpenClaw()
+        stopGateway()
         stopAuxServers()
         stopProxy()
         Log.i(TAG, "Server stopped")

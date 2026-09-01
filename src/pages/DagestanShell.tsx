@@ -30,7 +30,7 @@ interface ServiceStatus {
 import { getDroid } from "@/lib/bridge";
 
 const SERVICE_DEFS = [
-  { name: "Codex CLI", port: 3000, icon: <Terminal className="size-4" /> },
+  { name: "Codex CLI", port: 18925, icon: <Terminal className="size-4" /> },
   { name: "OpenClaw Gateway", port: 18790, icon: <Globe className="size-4" /> },
   { name: "OpenCodex Proxy", port: 10101, icon: <Server className="size-4" /> },
   { name: "Hermes Web UI", port: 8788, icon: <LayoutDashboard className="size-4" /> },
@@ -56,8 +56,13 @@ function useServiceStatuses(): ServiceStatus[] {
     }
     const next = SERVICE_DEFS.map((s) => {
       try {
-        const raw = droid.run(`lsof -ti:${s.port} 2>/dev/null | head -1 || echo ''`);
-        return { ...s, status: (raw.trim() ? "running" : "stopped") as "running" | "stopped" };
+        // lsof is often missing inside proot — fall back to the
+        // /proc/net/tcp socket table (port in uppercase hex).
+        const raw = droid.run(
+          `lsof -ti:${s.port} 2>/dev/null | head -1 || grep -c ":${s.port.toString(16).toUpperCase().padStart(4, "0")} " /proc/net/tcp 2>/dev/null || echo ''`,
+        );
+        const occupied = raw.trim() !== "" && raw.trim() !== "0";
+        return { ...s, status: (occupied ? "running" : "stopped") as "running" | "stopped" };
       } catch {
         return { ...s, status: "stopped" as const };
       }

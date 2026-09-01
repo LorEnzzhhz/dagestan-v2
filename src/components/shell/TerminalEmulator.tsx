@@ -96,7 +96,7 @@ export function TerminalEmulator() {
         { type: "system", text: "Running processes:" },
         { type: "output", text: "  PID  NAME              PORT    STATUS" },
         { type: "output", text: "  ───  ────              ────    ──────" },
-        { type: "output", text: "  001  codex-web-local   3000    ✅ running" },
+        { type: "output", text: "  001  codex-web-local   18925   ✅ running" },
         { type: "output", text: "  002  openclaw-gateway  18790   ✅ running" },
         { type: "output", text: "  003  opencodex-proxy   10101   ✅ running" },
         { type: "output", text: "  004  hermes-webui      8788    ⏹ stopped" },

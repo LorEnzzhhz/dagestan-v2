@@ -35,7 +35,7 @@ const ENDPOINTS: { url: string; source: string }[] = [
   { url: "http://127.0.0.1:8788/v1/models",  source: "hermes"    },
   { url: "http://127.0.0.1:10101/v1/models", source: "opencodex" },
   { url: "http://127.0.0.1:18790/v1/models", source: "openclaw"  },
-  { url: "http://127.0.0.1:3000/v1/models",  source: "codex-web" },
+  { url: "http://127.0.0.1:18925/v1/models", source: "codex-web" },
   { url: "http://127.0.0.1:18927/v1/models", source: "local"     },
 ];
 

@@ -21,6 +21,34 @@ Dagestan is a source-level rebrand of the open-source
 Engine internals (OpenClaw gateway, Codex CLI, Termux bootstrap) keep their real
 names — they are functional npm package names, not branding, so they must stay.
 
+## 🛠 v2.9.2 — the 4 servers actually start on-device
+
+Root causes found and fixed for "servers won't run / port issues":
+
+- **Hermes port bug** — upstream `hermes-webui` reads its HTTP port only
+  from the `HERMES_WEBUI_PORT` env var (default **8787**), while the app
+  probes and exposes **8788**. The server was actually running one port
+  below while `startHermesServer()` reported "did not become ready in
+  20s" forever. The manager now exports `HERMES_WEBUI_PORT=8788` before
+  launch.
+- **Stale port occupants** — starting OpenCodex/Hermes over an old
+  instance died with "Address already in use" (or ocx refusing to hop
+  ports). The manager now kills stale prefix processes before start via
+  a proot-safe `/proc` cmdline+environ scan (no `fuser`/`lsof` needed).
+- **Stop leaked aux servers** — `stopServer()` early-returned when the
+  web server wasn't running, leaving OpenClaw/OpenCodex/Hermes/proxy
+  alive and holding ports for the next start. Cleanup now always runs.
+- **Services page was desktop-only** — it pinged dev-runner control
+  ports (4000/19790/11101/9788), showed Codex on :3000 and offered a
+  `scripts/services/runner.mjs` start command that doesn't exist on a
+  phone. Inside the APK it now talks to the native manager through new
+  `DagestanDroid` bridge methods (`serverState`/`startServer`/
+  `stopServer`) using the real ports (18925/18790/10101/8788), with
+  per-server error output surfaced on the cards.
+- **Status probes hardened** — `lsof` is frequently missing in proot;
+  Dashboard/DagestanShell/provider-status now fall back to a
+  `/proc/net/tcp` socket-table scan (port in uppercase hex).
+
 ## ✨ v1.1.0 — improved dashboard
 
 The in-app dashboard now ships a **Dagestan skin**, injected natively on every
