@@ -109,6 +109,55 @@ run_in_root '
 ' && log "Hermes WebUI bundled — say \"start hermes webui\" in chat, opens at http://localhost:8788" \
   || log "hermes-webui bundle skipped this run — ask the AI to retry when online"
 
+# --- bundled Claude Code + Cursor Agent --------------------------------------
+# The APK extracts the native linux-arm64 CLI binaries (glibc) into the Termux
+# prefix at $PREFIX/opt/... — they can't execute under bionic, so we copy them
+# into this Debian container once and symlink them onto PATH. If the APK didn't
+# ship them (older builds) we fall back to a network install inside the
+# container so `claude` / `cursor-agent` work either way.
+if command -v proot-distro >/dev/null 2>&1; then
+  PREFIX_DIR="$(dirname "$(dirname "$(command -v proot-distro)")")" # …/usr/bin → …/usr
+  ROOTFS_DIR="$PREFIX_DIR/var/lib/proot-distro/installed-rootfs/$DISTRO"
+
+  if [ -d "$PREFIX_DIR/opt/claude-code" ] && [ -f "$PREFIX_DIR/opt/claude-code/claude" ]; then
+    if [ ! -x "$ROOTFS_DIR/opt/claude-code/claude" ]; then
+      log "bundling Claude Code → container /opt/claude-code…"
+      mkdir -p "$ROOTFS_DIR/opt" 2>/dev/null || true
+      cp -r "$PREFIX_DIR/opt/claude-code" "$ROOTFS_DIR/opt/" 2>/dev/null \
+        && chmod 755 "$ROOTFS_DIR/opt/claude-code/claude" 2>/dev/null \
+        || true
+    fi
+    run_in_root 'ln -sf /opt/claude-code/claude /usr/local/bin/claude; command -v claude || true' \
+      && log "Claude Code ready in container — say \"run claude\" in chat" \
+      || log "Claude Code bundle copy had warnings — retry when online"
+  else
+    log "Claude Code not bundled in this APK — installing via npm inside the container…"
+    run_in_root 'command -v claude >/dev/null 2>&1 || npm install -g @anthropic-ai/claude-code >/dev/null 2>&1 || true'
+  fi
+
+  if [ -d "$PREFIX_DIR/opt/cursor" ] && [ -f "$PREFIX_DIR/opt/cursor/agent" ]; then
+    if [ ! -x "$ROOTFS_DIR/opt/cursor/agent" ]; then
+      log "bundling Cursor Agent → container /opt/cursor…"
+      mkdir -p "$ROOTFS_DIR/opt" 2>/dev/null || true
+      cp -r "$PREFIX_DIR/opt/cursor" "$ROOTFS_DIR/opt/" 2>/dev/null \
+        && chmod 755 "$ROOTFS_DIR/opt/cursor/agent" 2>/dev/null \
+        || true
+    fi
+    run_in_root 'ln -sf /opt/cursor/agent /usr/local/bin/cursor-agent; command -v cursor-agent || true' \
+      && log "Cursor Agent ready in container — say \"run cursor-agent\" in chat" \
+      || log "Cursor Agent bundle copy had warnings — retry when online"
+  else
+    log "Cursor Agent not bundled in this APK — installing via the official script…"
+    run_in_root 'if ! command -v cursor-agent >/dev/null 2>&1; then
+        curl -fsSL https://cursor.com/install | bash >/dev/null 2>&1 || true
+        for p in /root/.local/bin/agent /root/.cursor/bin/agent; do
+          [ -x "$p" ] && { ln -sf "$p" /usr/local/bin/cursor-agent; break; }
+        done
+        command -v cursor-agent || true
+      fi'
+  fi
+fi
+
 CHROMIUM_BIN="$(run_in_root 'command -v chromium || command -v chromium-browser || true' | tr -d '\r')"
 [ -n "$CHROMIUM_BIN" ] && log "headless Chromium available: $CHROMIUM_BIN" \
                         || log "Chromium not detected yet — the AI can install it on demand"

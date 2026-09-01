@@ -537,6 +537,11 @@ class MainActivity : AppCompatActivity() {
         // Step 2c: Install bionic-compat.js (Android platform shim for Node.js)
         serverManager.ensureBionicCompat()
 
+        // Step 2c+: Restore bundled agent CLIs (Claude Code, Cursor Agent) from
+        // APK assets. They are staged in the prefix under opt/ and executed
+        // inside the proot Debian container that the device agent provisions.
+        serverManager.extractBundledAgents { msg -> updateDetail(msg) }
+
         // Step 2d: Install OpenClaw
         if (!serverManager.isOpenClawInstalled()) {
             updateStatus("Installing build dependencies…")
